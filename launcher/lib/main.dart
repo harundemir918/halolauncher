@@ -105,6 +105,17 @@ class _HaloLauncherState extends State<HaloLauncher> {
   /// Apps was opened from Ask Halo, so its search starts focused.
   bool _ask = false;
 
+  /// A notification whose reply field Stream opens with (Home's card).
+  String? _replyTo;
+
+  void _replyIn(String id) => setState(() {
+    _screen = 'stream';
+    _replyTo = id;
+  });
+
+  // The screen shown at the last build, to notice leaving Stream.
+  late String _shownBefore = widget.start;
+
   void _openSearch() => setState(() {
     _screen = 'apps';
     _ask = true;
@@ -159,6 +170,14 @@ class _HaloLauncherState extends State<HaloLauncher> {
 
   @override
   Widget build(BuildContext context) {
+    // Leaving Stream: what was there counts as seen (NOW moves to EARLIER).
+    if (_shownBefore == 'stream' && _screen != 'stream') {
+      _replyTo = null;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => widget.backend.markNotificationsSeen(),
+      );
+    }
+    _shownBefore = _screen;
     final screen = switch (_screen) {
       'lock' => LockScreen(
         backend: widget.backend,
@@ -169,6 +188,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
         onLaunch: _launch,
         onLongPress: _openMenu,
         onAsk: _openSearch,
+        onReply: _replyIn,
       ),
       'apps' => AppsScreen(
         backend: widget.backend,
@@ -178,7 +198,11 @@ class _HaloLauncherState extends State<HaloLauncher> {
       ),
       'switchboard' => SwitchboardScreen(backend: widget.backend),
       'recents' => RecentsScreen(backend: widget.backend),
-      'stream' => StreamScreen(backend: widget.backend),
+      'stream' => StreamScreen(
+        key: ValueKey('stream-$_replyTo'),
+        backend: widget.backend,
+        replyTo: _replyTo,
+      ),
       'system' => SystemScreen(backend: widget.backend),
       'bench' => BenchScreen(backend: widget.backend),
       final app => _Placeholder(title: app, onBack: _goHome),

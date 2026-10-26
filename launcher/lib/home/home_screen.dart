@@ -14,6 +14,7 @@ class HomeScreen extends StatefulWidget {
     required this.onLaunch,
     this.onLongPress,
     this.onAsk,
+    this.onReply,
   });
 
   final HaloBackend backend;
@@ -26,6 +27,10 @@ class HomeScreen extends StatefulWidget {
 
   /// Ask Halo was tapped: open search (D-027).
   final VoidCallback? onAsk;
+
+  /// Reply was tapped on the action card: open Stream with that
+  /// notification's reply field.
+  final ValueChanged<String>? onReply;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -59,9 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
         .where((n) => n.unread)
         .map((n) => n.app)
         .toSet();
-    final ask = b.notifications
-        .where((n) => n.unread && n.actionPrompt != null)
-        .firstOrNull;
+    // The newest unread message that can be replied to (D-012 rules).
+    final ask = topMessageOf(b.notifications);
     // Apps come and go (installs, removals), so keep the focus on the arc.
     final arc = b.arcApps;
     if (arc.isNotEmpty) _focused ??= _initialFocus();
@@ -116,10 +120,19 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Without events there is no TODAY: "Clear for the day" says it.
-                if (b.agenda.isNotEmpty) ...[
+                // Without calendar access, TODAY asks for it.
+                if (b.agenda.isNotEmpty || !b.canReadCalendar) ...[
                   HaloKicker('Today', color: context.halo.muted, square: false),
                   const SizedBox(height: 10),
                 ],
+                if (!b.canReadCalendar)
+                  HaloResultRow(
+                    key: const ValueKey('calendar-allow'),
+                    title: "Show today's events",
+                    caption: 'Allow',
+                    captionSignal: true,
+                    onTap: b.requestCalendarAccess,
+                  ),
                 for (final e in b.agenda)
                   HaloAgendaRow(
                     time: HaloFormat.clock(e.start),
@@ -155,9 +168,14 @@ class _HomeScreenState extends State<HomeScreen> {
               child: HaloActionCard(
                 sender: ask.sender,
                 age: ask.age(now),
-                message: ask.actionPrompt!,
-                onYes: () {},
-                onLater: () {},
+                // The designs' card answers a question with Yes; a real
+                // message gets Reply, which opens it in Stream.
+                message: ask.actionPrompt ?? ask.body,
+                yesLabel: ask.actionPrompt != null ? 'Yes' : 'Reply',
+                onYes: ask.actionPrompt != null
+                    ? () => b.replyToNotification(ask.id, 'Yes')
+                    : () => widget.onReply?.call(ask.id),
+                onLater: () => b.snoozeNotification(ask.id),
               ),
             ),
           Positioned(
