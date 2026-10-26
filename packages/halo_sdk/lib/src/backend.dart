@@ -39,8 +39,30 @@ abstract interface class HaloBackend {
   /// The next calendar event today, if any.
   CalendarEvent? get nextEvent;
 
-  /// Installed apps in arc order, left to right.
+  /// Every installed app, by label.
   List<HaloAppInfo> get apps;
+
+  /// The apps the user keeps on the Home arc, left to right.
+  List<HaloAppInfo> get arcApps;
+
+  /// Adds an app to the right end of the arc. Does nothing if it is there.
+  void pinToArc(String id);
+
+  void unpinFromArc(String id);
+
+  /// Moves an app on the arc by [by] places (negative is left), clamped.
+  void moveOnArc(String id, int by);
+
+  /// The app's shortcuts. Empty unless Halo is the default home app.
+  Future<List<AppShortcut>> shortcuts(String appId);
+
+  Future<bool> startShortcut(String appId, String shortcutId);
+
+  /// Opens the system's App info page for the app.
+  Future<void> openAppInfo(String appId);
+
+  /// Asks the system to uninstall the app; the system confirms with the user.
+  Future<void> uninstall(String appId);
 
   /// Starts an app. False when this backend can't start apps (the mock), so
   /// the launcher shows a stand-in instead.

@@ -186,14 +186,79 @@ class MockBackend implements HaloBackend {
 
   @override
   List<HaloAppInfo> get apps => const [
-    HaloAppInfo(id: 'notes', label: 'Notes'),
-    HaloAppInfo(id: 'maps', label: 'Maps'),
-    HaloAppInfo(id: 'music', label: 'Music'),
-    HaloAppInfo(id: 'messages', label: 'Messages'),
     HaloAppInfo(id: 'camera', label: 'Camera'),
-    HaloAppInfo(id: 'web', label: 'Web'),
+    HaloAppInfo(id: 'maps', label: 'Maps'),
+    HaloAppInfo(id: 'messages', label: 'Messages'),
+    HaloAppInfo(id: 'music', label: 'Music'),
+    HaloAppInfo(id: 'notes', label: 'Notes'),
     HaloAppInfo(id: 'phone', label: 'Phone'),
+    HaloAppInfo(id: 'web', label: 'Web'),
   ];
+
+  // The Home design's order, Messages in the middle.
+  final List<String> _arc = [
+    'notes',
+    'maps',
+    'music',
+    'messages',
+    'camera',
+    'web',
+    'phone',
+  ];
+
+  @override
+  List<HaloAppInfo> get arcApps => [
+    for (final id in _arc) apps.firstWhere((a) => a.id == id),
+  ];
+
+  @override
+  void pinToArc(String id) {
+    if (_arc.contains(id) || !apps.any((a) => a.id == id)) return;
+    _arc.add(id);
+    _changes.add(null);
+  }
+
+  @override
+  void unpinFromArc(String id) {
+    if (_arc.remove(id)) _changes.add(null);
+  }
+
+  @override
+  void moveOnArc(String id, int by) {
+    final from = _arc.indexOf(id);
+    if (from < 0) return;
+    final to = (from + by).clamp(0, _arc.length - 1);
+    if (to == from) return;
+    _arc
+      ..removeAt(from)
+      ..insert(to, id);
+    _changes.add(null);
+  }
+
+  @override
+  Future<List<AppShortcut>> shortcuts(String appId) async => switch (appId) {
+    'messages' => const [
+      AppShortcut(id: 'new', label: 'New message'),
+      AppShortcut(id: 'elif', label: 'Elif'),
+    ],
+    'maps' => const [AppShortcut(id: 'home', label: 'Directions home')],
+    _ => const [],
+  };
+
+  @override
+  Future<bool> startShortcut(String appId, String shortcutId) async => false;
+
+  /// App ids the mock was asked to show App info for, in order.
+  final appInfoRequests = <String>[];
+
+  /// App ids the mock was asked to uninstall, in order.
+  final uninstallRequests = <String>[];
+
+  @override
+  Future<void> openAppInfo(String appId) async => appInfoRequests.add(appId);
+
+  @override
+  Future<void> uninstall(String appId) async => uninstallRequests.add(appId);
 
   late final List<HaloNotification> _notifications = [
     HaloNotification(

@@ -106,7 +106,13 @@ class HaloNotification {
 
 /// An installed app, in arc order.
 class HaloAppInfo {
-  const HaloAppInfo({required this.id, required this.label, this.icon});
+  const HaloAppInfo({
+    required this.id,
+    required this.label,
+    this.icon,
+    this.work = false,
+    this.canUninstall = true,
+  });
 
   /// Stable id: `messages` in the mock, the flattened component name
   /// (`com.example/.MainActivity`) on Android.
@@ -116,6 +122,28 @@ class HaloAppInfo {
   /// The app's own icon as PNG bytes, when the platform has one. Without it
   /// the launcher draws a Halo glyph.
   final Uint8List? icon;
+
+  /// Installed in the work profile.
+  final bool work;
+
+  /// False for apps that ship with the system and can't be removed.
+  final bool canUninstall;
+
+  HaloAppInfo withIcon(Uint8List? icon) => HaloAppInfo(
+    id: id,
+    label: label,
+    icon: icon,
+    work: work,
+    canUninstall: canUninstall,
+  );
+}
+
+/// One of an app's shortcuts (`New message`, `Elif`), from a long press.
+class AppShortcut {
+  const AppShortcut({required this.id, required this.label});
+
+  final String id;
+  final String label;
 }
 
 /// A quick toggle on the Switchboard (Wi-Fi, Bluetooth, ...).

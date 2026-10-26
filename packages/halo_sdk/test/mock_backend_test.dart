@@ -37,8 +37,13 @@ void main() {
     expect(late.nextEvent, isNull);
   });
 
-  test('apps are in arc order with Messages in the middle', () {
-    final ids = backend.apps.map((a) => a.id).toList();
+  test('apps come by label', () {
+    final labels = backend.apps.map((a) => a.label).toList();
+    expect(labels, [...labels]..sort());
+  });
+
+  test('the arc is in the design order with Messages in the middle', () {
+    final ids = backend.arcApps.map((a) => a.id).toList();
     expect(ids, [
       'notes',
       'maps',
@@ -56,6 +61,52 @@ void main() {
     expect(await b.launch('messages'), isFalse);
     expect(b.isDefaultHome, isTrue);
     expect(b.apps.every((a) => a.icon == null), isTrue);
+  });
+
+  group('arc', () {
+    test('pinning adds to the right end once', () async {
+      final b = MockBackend();
+      b.unpinFromArc('web');
+      final changed = expectLater(b.changes, emits(null));
+      b.pinToArc('web');
+      await changed;
+      b.pinToArc('web');
+      expect(b.arcApps.last.id, 'web');
+      expect(b.arcApps.where((a) => a.id == 'web'), hasLength(1));
+    });
+
+    test('pinning an unknown app does nothing', () {
+      final b = MockBackend()..pinToArc('nope');
+      expect(b.arcApps, hasLength(7));
+    });
+
+    test('moving clamps at the ends', () {
+      final b = MockBackend()..moveOnArc('maps', -5);
+      expect(b.arcApps.first.id, 'maps');
+      b.moveOnArc('maps', 2);
+      expect(b.arcApps.map((a) => a.id).take(3), ['notes', 'music', 'maps']);
+      b.moveOnArc('phone', 1);
+      expect(b.arcApps.last.id, 'phone');
+    });
+
+    test('unpinning removes it from the arc, not from apps', () {
+      final b = MockBackend()..unpinFromArc('camera');
+      expect(b.arcApps.any((a) => a.id == 'camera'), isFalse);
+      expect(b.apps.any((a) => a.id == 'camera'), isTrue);
+    });
+  });
+
+  test('Messages has shortcuts, App info and uninstall are recorded', () async {
+    final b = MockBackend();
+    expect((await b.shortcuts('messages')).map((s) => s.label), [
+      'New message',
+      'Elif',
+    ]);
+    expect(await b.shortcuts('camera'), isEmpty);
+    await b.openAppInfo('maps');
+    await b.uninstall('web');
+    expect(b.appInfoRequests, ['maps']);
+    expect(b.uninstallRequests, ['web']);
   });
 
   test('Elif has an action prompt', () {
