@@ -17,9 +17,13 @@ class AppsScreen extends StatefulWidget {
     required this.backend,
     required this.onLaunch,
     required this.onLongPress,
+    this.autofocusSearch = false,
   });
 
   final HaloBackend backend;
+
+  /// Open with the keyboard up, as from Ask Halo (D-027).
+  final bool autofocusSearch;
   final ValueChanged<String> onLaunch;
   final ValueChanged<HaloAppInfo> onLongPress;
 
@@ -293,8 +297,9 @@ class _AppsScreenState extends State<AppsScreen> {
                 left: HaloSpace.gutter,
                 right: HaloSpace.gutter,
                 child: HaloCommandField(
-                  placeholder: 'find an app',
+                  placeholder: 'find anything',
                   controller: _query,
+                  autofocus: widget.autofocusSearch,
                   onChanged: (_) => setState(() {}),
                   onSubmitted: (text) {
                     final best = searchApps(widget.backend.apps, text);

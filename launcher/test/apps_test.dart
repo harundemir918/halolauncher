@@ -117,6 +117,43 @@ void main() {
     });
   });
 
+  group('Ask Halo', () {
+    bool searchFocused(WidgetTester tester) => tester
+        .widget<EditableText>(find.byType(EditableText))
+        .focusNode
+        .hasFocus;
+
+    testWidgets('a tap opens search with the keyboard up', (tester) async {
+      await pumpLauncher(tester, MockBackend());
+      await tester.tap(find.text('Ask Halo'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppsScreen), findsOneWidget);
+      expect(find.text('find anything'), findsOneWidget);
+      expect(searchFocused(tester), isTrue);
+    });
+
+    testWidgets('a swipe opens it without the keyboard', (tester) async {
+      await pumpLauncher(tester, MockBackend());
+      await tester.tap(find.text('Ask Halo'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.dragFrom(const Offset(195, 700), const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppsScreen), findsOneWidget);
+      expect(searchFocused(tester), isFalse);
+    });
+
+    testWidgets('a long press opens the system assistant', (tester) async {
+      final b = MockBackend();
+      await pumpLauncher(tester, b);
+      await tester.longPress(find.text('Ask Halo'));
+      await tester.pumpAndSettle();
+      expect(b.assistantRequests, 1);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+  });
+
   group('the list', () {
     testWidgets('title, count, A to Z with headings, # last', (tester) async {
       final b = ManyApps();

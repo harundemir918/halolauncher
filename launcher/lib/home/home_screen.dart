@@ -13,6 +13,7 @@ class HomeScreen extends StatefulWidget {
     required this.backend,
     required this.onLaunch,
     this.onLongPress,
+    this.onAsk,
   });
 
   final HaloBackend backend;
@@ -22,6 +23,9 @@ class HomeScreen extends StatefulWidget {
 
   /// A long press on an app on the arc (its menu).
   final ValueChanged<HaloAppInfo>? onLongPress;
+
+  /// Ask Halo was tapped: open search (D-027).
+  final VoidCallback? onAsk;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -171,7 +175,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 8,
                     child: ColoredBox(color: context.halo.signalLine),
                   ),
-                  onPressed: () {},
+                  // Tap: search apps, people and settings. Long press: the
+                  // system assistant, if the user has one (D-027).
+                  onPressed: widget.onAsk,
+                  onLongPress: b.openAssistant,
                 ),
               ),
             ),

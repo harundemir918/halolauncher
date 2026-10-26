@@ -101,6 +101,14 @@ class _HaloLauncherState extends State<HaloLauncher> {
   /// The app whose long-press menu is open.
   HaloAppInfo? _menu;
 
+  /// Apps was opened from Ask Halo, so its search starts focused.
+  bool _ask = false;
+
+  void _openSearch() => setState(() {
+    _screen = 'apps';
+    _ask = true;
+  });
+
   void _openMenu(HaloAppInfo app) => setState(() => _menu = app);
 
   void _closeMenu() => setState(() => _menu = null);
@@ -110,6 +118,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
       setState(() {
         _screen = 'home';
         _menu = null;
+        _ask = false;
       });
     }
   }
@@ -125,6 +134,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
   }
 
   void _onSwipe(EdgeZone zone) => setState(() {
+    _ask = false;
     _screen = switch (zone) {
       EdgeZone.topRight => 'switchboard',
       EdgeZone.topLeft => 'stream',
@@ -150,11 +160,13 @@ class _HaloLauncherState extends State<HaloLauncher> {
         backend: widget.backend,
         onLaunch: _launch,
         onLongPress: _openMenu,
+        onAsk: _openSearch,
       ),
       'apps' => AppsScreen(
         backend: widget.backend,
         onLaunch: _launch,
         onLongPress: _openMenu,
+        autofocusSearch: _ask,
       ),
       'switchboard' => SwitchboardScreen(backend: widget.backend),
       'recents' => RecentsScreen(backend: widget.backend),
