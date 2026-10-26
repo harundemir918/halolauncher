@@ -20,7 +20,7 @@ On Android today (Phase 1): your installed apps on the arc, with their own icons
 
 ## Status
 
-Pre-alpha. Halo installs on Android, can become the default home app, lists the installed apps on the arc and launches them. Calendar, notifications, quick controls and Recents come next; until then those screens are empty on a phone. All six screens also run on macOS with the design's mock data. See [ROADMAP.md](ROADMAP.md).
+Pre-alpha. On Android, Halo can become the default home app; your chosen apps sit on the arc, and every app is in the Apps list (swipe up on the arc), with search across apps, contacts and settings, and a long-press menu. Calendar, notifications, quick controls and Recents come next; until then those screens are empty on a phone. All six screens also run on macOS with the design's mock data. See [ROADMAP.md](ROADMAP.md).
 
 ## What it does on Android
 

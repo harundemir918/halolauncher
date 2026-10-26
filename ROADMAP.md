@@ -44,18 +44,19 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 **Exit:** all six screens match the designs in golden tests in both appearances, and the launcher is fully navigable on macOS with mock data.
 
-## Phase 3: Home Arc with real apps
-- ◐ Real app icons, drawn as circles: adaptive icons masked to a circle with a Volt ring on the focused app ☑ (interim, D-025); monochrome/themed icons for the Volt focus state ☐
+## Phase 3: Home Arc with real apps ☑
+- ☑ Real app icons, drawn as circles (D-025): an app with a monochrome icon (Android 13+) is drawn as in the design when focused, Volt fill and the icon in carbon; other apps keep their icon with a Volt ring
 - ☑ Choose and reorder the apps on the arc, saved on the phone; first filled with the default apps (D-026)
 - ☑ More than 7 apps: the arc scrolls, plus the Apps list, **not a grid**: A to Z with letter headings and a letter index, opened by an up swipe on the arc (D-026)
-- ◐ App search from the command field: apps ☑ (prefix, word, anywhere; Turkish-aware; Go opens the best match); contacts and settings ☐
+- ☑ Search from the command field, in APPS, CONTACTS and SETTINGS sections: apps (prefix, word, anywhere; Turkish-aware), contacts behind an optional permission asked for from search with "Names stay on this phone", and system settings pages. Go opens the best app, else the best settings page
 - ☑ Long press on the arc or in the list: app shortcuts (while Halo is the default home app), Add to / Remove from arc, Move left / right, App info, Uninstall (not for system apps)
-- ◐ Work profile apps listed, launched in their profile and marked `WORK` ☑; private space (Android 15) ☐
-- ☐ Home "NOW", agenda and action card fed by real data (Phase 4), with a clean empty state when permissions are missing
+- ☑ Work profile apps listed, launched in their profile and marked `WORK`; private space (Android 15+) apps listed while it is unlocked, marked `PRIVATE`, with a lock / unlock row at the end of Apps
+- ☑ Home's clean empty state: "Clear for the day" and no `TODAY` heading without events. Real data for "NOW", the agenda and the action card is Phase 4
+- ☑ On a phone, an up swipe from the bottom edge of Home opens Apps as well (Recents has nothing to show on Android until Phase 6)
 
 **Exit:** a phone with 100+ apps installed can reach every app from the launcher within two gestures, without a grid.
 
-*Status (2026-10-26):* built and covered by widget tests; Apps, search and the menu are proposals awaiting the owner (D-026). On a Galaxy S20 FE (Android 13, 150 apps, release build): the arc filled with the default apps, Apps opened by an up swipe on the arc, the letter index jumped, Turkish-aware search found apps with the Samsung keyboard. Not yet checked on the phone: the long-press menu, shortcuts and uninstall.
+*Status (2026-10-26): done.* The exit holds: on a Galaxy S20 FE (Android 13, 150 apps, release build) every app is two gestures away (open Apps, then type or jump by letter). Checked there: the arc filled with the default apps, Apps by an up swipe, the letter index, Turkish-aware search with the Samsung keyboard, the keyboard keeping the frame full size. Checked on a Pixel 10 Pro emulator (Android 17): the monochrome focus state, the long-press menu with a real shortcut, Move right, contact search through the permission dialog, opening a contact and a settings page, and locking and unlocking a private space. Not checked on a device: Uninstall's system dialog. The Apps design (D-026) is still a proposal awaiting the owner.
 
 ## Phase 4: Calendar and notifications
 - ☐ Calendar via `CalendarContract` (`READ_CALENDAR`): Home "NOW", the `TODAY` agenda and the next-event card

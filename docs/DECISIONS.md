@@ -94,12 +94,14 @@ The system Overview belongs to the system launcher; third-party launchers can't 
 
 ## D-023 · Shell gestures on Android. **Open**
 Android owns the bottom edge (home and Overview), the side edges (back) and the top edge (the notification shade). The desktop edge swipes (top left Stream, top right Switchboard, bottom Home/Recents) work today inside the launcher window, but the system takes most edge swipes first under gesture navigation. Options: swipes started away from the edges (down in the upper half of Home for Stream/Switchboard, up from the arc for Recents), or on-screen affordances.
+*2026-10-26:* on Android, an up swipe from the arc band or the bottom edge of Home opens Apps (D-026); Recents has no Android route until Phase 6.
 
 ## D-024 · System bars and the design frame. **Proposed** (2026-10-26), interim
 The launcher draws edge to edge behind transparent system bars, and lays out the 390-wide design frame inside the safe area, scaled by width (`launcher/lib/design_frame.dart`). The shell's own status row stays for now, so time and battery show twice. The owner decides whether to hide the system status bar on Home or drop the shell's status row (ROADMAP open question).
 
-## D-025 · App icons on the arc, interim. **Proposed** (2026-10-26)
-The designs draw every app as an outline glyph, Volt-filled when focused. Real apps bring their own icons. Until Phase 3 decides (monochrome icons tinted like the glyphs is the likely answer), the arc shows each app's icon masked to a circle, and the focused one gets a Volt ring. Volt still means "the active one".
+## D-025 · App icons on the arc. **Proposed** (2026-10-26)
+The designs draw every app as an outline glyph, Volt-filled when focused. Real apps bring their own icons. The arc shows each app's icon masked to a circle. When the app has a monochrome icon layer (Android 13+ themed icons), the focused app is drawn as in the design: a Volt circle with that layer in the on-signal color (carbon), crossfading to the app's own colors as it leaves focus. Apps without one get a Volt ring when focused. Volt still means "the active one".
+*Open for the owner:* whether unfocused apps should also go monochrome (closer to the glyph designs, less recognizable).
 
 ## D-026 · Apps: a list, the arc you keep, and a long-press menu. **Proposed** (2026-10-26)
 The designs have no "all apps" view. With 100+ apps the arc alone can't reach everything, and rule 01 forbids a grid. Proposal, built in Phase 3:
@@ -107,5 +109,8 @@ The designs have no "all apps" view. With 100+ apps the arc alone can't reach ev
 - **Search:** label prefix, then word prefix, then anywhere; case and Latin accents (Turkish included) ignored. Go opens the best match. Two gestures reach any app: open Apps, then type or jump by letter.
 - **The arc you keep:** the arc shows the apps the user pins, in their order, saved on the phone. The first time it is filled with the default apps for the Home design's roles (maps, music, messages, camera, browser, phone; Notes has no standard role), or the first seven apps when none resolve.
 - **Long-press menu** (on the arc and in the list): a solid `surface` notch card with the app's shortcuts (only while Halo is the default home app, an Android rule), Add to / Remove from arc, Move left / right, App info and Uninstall (hidden for system apps). No scrim: tapping outside or back closes it.
+- **Search sources** (Phase 3, done): results come in APPS, CONTACTS and SETTINGS sections. Contacts need `READ_CONTACTS`, asked for only from search with an inline "Search your contacts too · ALLOW" row and the note "Names stay on this phone"; after a permanent no, the row opens Halo's App info. Contacts show initials in a notch (circles are for apps). Settings pages are a fixed list mapped to system screens. Go opens the best app, else the best settings page.
+- **Private space** (Android 15+): its apps appear, tagged `PRIVATE`, only while it is unlocked; a row at the end of Apps locks or unlocks it (the system asks for the lock).
+- **On a phone, the bottom edge of Home opens Apps too**, since a thumb starts just above the gesture bar and Recents is empty on Android until Phase 6 (see D-023).
 *Open for the owner:* the gesture (up on the arc versus an on-screen affordance), whether the per-row `ON ARC` Volt is too much Volt, and how reordering should feel (drag on the arc instead of Move left / right).
 

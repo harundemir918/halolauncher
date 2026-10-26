@@ -199,6 +199,7 @@ Blocks have a **large top-left radius** and small radii on the other three corne
 | **Media strip** | Volt notch square play/pause button with a `surface` card holding the title, mono artist and a 3 px progress bar (bone on `line10`). |
 | **Section kicker** | 8 × 8 Volt square followed by a mono label (`NOW`, `COLOR`, `MESSAGES`). |
 | **App row** *(launcher, not in the designs, D-026)* | 60 high with a `line10` hairline below. A 40 px app circle (`surface`, `line12` border, the app's icon or a glyph), the name in `rowTitle`, and mono `caption` tags on the right: `WORK` in ash, `ON ARC` in Volt. |
+| **Result row** *(D-026)* | A search result that isn't an app, same 60 high row: a contact with its initials in a 40 px `notchM` (`surface`, `line08` border; never a circle), a settings page with only its name, or an ask with a Volt caption for the one primary action (`ALLOW`). |
 | **Letter index** *(D-026)* | A 28 wide column of `labelSmall` letters down the right edge of the Apps list, ash, the letter in view Volt. Tap or drag to jump. |
 | **Menu** *(D-026)* | The long-press card: `surface`, `notchXL`, `line08` border, 20 px sides. Title in `title` with an optional mono tag, then sections under ash mono labels (`SHORTCUTS`, `ARC`, `APP`) with 48 high `rowTitle` rows and `line10` hairlines. Disabled rows are ash. Solid, no scrim behind it. |
 
@@ -231,6 +232,6 @@ The design system ships as the Dart package `packages/halo_ui`:
 
 - `HaloColors`, `HaloType`, `HaloRadii` (notch tokens), `HaloSpace` are generated or handwritten from this document.
 - `HaloTheme` provides a `ThemeData` plus a `ThemeExtension` for the tokens that Material doesn't model.
-- Widgets: `HaloSwitch`, `HaloToggleRow`, `HaloDial`, `HaloSlat`, `HaloSegmented`, `HaloSlider`, `HaloButton`, `HaloCommandField`, `HaloTimeline`, `HaloBatteryLine`, `HaloBatteryCells`, `HaloArc`, `HaloKicker`, `HaloAppRow`, `HaloLetterIndex`, `HaloMenu`, `NotchBorder` (a `ShapeBorder` for the asymmetric radius).
+- Widgets: `HaloSwitch`, `HaloToggleRow`, `HaloDial`, `HaloSlat`, `HaloSegmented`, `HaloSlider`, `HaloButton`, `HaloCommandField`, `HaloTimeline`, `HaloBatteryLine`, `HaloBatteryCells`, `HaloArc`, `HaloKicker`, `HaloAppRow`, `HaloResultRow`, `HaloLetterIndex`, `HaloMenu`, `NotchBorder` (a `ShapeBorder` for the asymmetric radius).
 - Fonts are bundled as assets in `halo_ui`. Don't use `google_fonts` (there is no network fetching at runtime on the device).
 - Golden tests compare each shell screen with mock data against `design/screens/*.png` at 390 × 844 @2x.
