@@ -37,7 +37,8 @@ Screens depend on `halo_ui` and on the `HaloBackend` interface only. They never 
 ## 3. The launcher app (`launcher/`)
 
 - **Entry** (`lib/main.dart`): picks the backend (`HALO_BACKEND`, default `android` on Android and `mock` elsewhere) and the start screen (`HALO_START`, default Home on Android and Lock with the mock, D-021). On Android it switches to edge-to-edge drawing first.
-- **Navigation:** one `HaloLauncher` state holds the current screen. `EdgeSwipes` moves between screens (D-023 decides the Android gestures). A Home press and the back gesture both return to Home; back never leaves the launcher.
+- **Navigation:** one `HaloLauncher` state holds the current screen and the open long-press menu. `EdgeSwipes` moves between screens (D-023 decides the Android gestures); on Home, an up swipe in the arc band opens Apps (D-026). A Home press returns to Home; back closes the menu first, then returns to Home, and never leaves the launcher.
+- **Apps and the menu** (`lib/apps/`, `lib/app_menu.dart`, D-026): the Apps list and search use `searchApps` from `halo_sdk`; the menu is drawn inside the design frame over the current screen, so it scales with it and needs no route.
 - **Design frame** (`lib/design_frame.dart`, D-024): screens are laid out on the 390-wide design frame inside the safe area, scaled by width, so absolute positions from the `.dc.html` sources keep working. The frame's height is whatever the safe area leaves at that scale; content tied to the arc is anchored from the bottom.
 - **State:** plain Dart (D-015). `BackendBuilder` rebuilds on `HaloBackend.changes`; screen-local state lives in `State` objects.
 - **Android manifest:** `MAIN` + `HOME` + `DEFAULT` intent filter, `singleTask`, `clearTaskOnLaunch`, `stateNotNeeded`, `excludeFromRecents`, no wallpaper (`windowShowWallpaper=false`; "no glass"). The launch and normal themes paint the Halo ground so a return to Home never flashes white or black.
@@ -48,15 +49,17 @@ A Flutter plugin with a Kotlin side and a Dart side.
 
 | Channel | Direction | Contents |
 |---|---|---|
-| `halo_android` (method) | Dart → Kotlin | `apps`, `icons {ids, size}`, `launch {id}`, `battery`, `isDefaultHome`, `requestDefaultHome` |
+| `halo_android` (method) | Dart → Kotlin | `apps`, `icons {ids, size}`, `launch {id}`, `defaultApps`, `getPref {key}`, `setPref {key, value}`, `shortcuts {id}`, `startShortcut {id, shortcut}`, `appInfo {id}`, `uninstall {id}`, `battery`, `isDefaultHome`, `requestDefaultHome` |
 | `halo_android/events` (event) | Kotlin → Dart | `{type: apps \| home \| battery \| defaultHome}` |
 
-- **Apps:** `LauncherApps.getActivityList` for the current user, minus Halo, sorted by label. The id is the short flattened component name (`com.example/.MainActivity`). Package changes come from `LauncherApps.Callback`. Manifest `<queries>` for `MAIN`/`LAUNCHER` provides package visibility on Android 11+.
+- **Apps:** `LauncherApps.getActivityList` for every profile (`LauncherApps.profiles`), minus Halo, sorted by label, with `work` and `canUninstall` (false for system apps that weren't updated). The id is the short flattened component name (`com.example/.MainActivity`), with `#<user serial>` for another profile. Package changes come from `LauncherApps.Callback`. Manifest `<queries>` provide package visibility on Android 11+ for launcher entries and for the default-app roles.
+- **Arc and settings:** saved in the app's `SharedPreferences` (`halo`) through `getPref`/`setPref`: the arc as a JSON list of ids, plus `appearance` and `textSize`. With no saved arc, `defaultApps` resolves the user's maps, music, SMS, camera, browser and dialer apps (D-026). Ids of apps that are gone stay saved but aren't shown.
+- **Shortcuts, App info, uninstall:** `LauncherApps.getShortcuts`/`startShortcut` (Android only allows these to the default home app), `startAppDetailsActivity`, and `ACTION_DELETE` (`REQUEST_DELETE_PACKAGES`; the system asks the user).
 - **Icons:** rendered off the main thread to 144 px PNGs. Adaptive icons are drawn full bleed without the system mask (cropped to the visible 72 of 108 dp) so Flutter can mask them to a circle; legacy icons are inset (D-025). Icons load after the list; only new ids are fetched on a package change.
 - **Launch:** `LauncherApps.startMainActivity`.
 - **Default home:** `RoleManager.ROLE_HOME`; the request falls back to the Home settings screen. The state is re-read when Halo resumes, since the user can change it in Settings.
 - **Home press:** `onNewIntent` with `ACTION_MAIN` + `CATEGORY_HOME` → `home` event → `HaloBackend.homePressed`.
-- **What isn't served yet** is empty, not invented: no agenda, notifications or Recents until Phases 4 and 6. Switchboard and System values are held in memory until Phase 5.
+- **What isn't served yet** is empty, not invented: no agenda, notifications or Recents until Phases 4 and 6. Switchboard values are held in memory until Phase 5.
 
 `AndroidBackend.create()` loads apps, battery and the default home state before the first frame, so Home never paints an empty arc.
 
@@ -65,7 +68,7 @@ A Flutter plugin with a Kotlin side and a Dart side.
 - `halo_ui`: widget tests per widget.
 - `halo_sdk`: unit tests for the mock.
 - `halo_android`: `AndroidBackend` against mocked channels (`test/android_backend_test.dart`).
-- `launcher`: widget tests per screen, navigation and launcher behavior (`test/launcher_test.dart`, including every screen with empty data), and golden tests at 390 × 844 in both appearances (skipped in CI, compared by eye).
+- `launcher`: widget tests per screen, navigation and launcher behavior (`test/launcher_test.dart`, including every screen with empty data), Apps, search and the menu (`test/apps_test.dart`), and golden tests at 390 × 844 in both appearances (skipped in CI, compared by eye).
 - On a device or emulator: install the debug APK, set Halo as the home app, launch an app from the arc, and press Home.
 
 ## 6. Versions

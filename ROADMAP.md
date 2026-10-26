@@ -46,14 +46,16 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 ## Phase 3: Home Arc with real apps
 - ◐ Real app icons, drawn as circles: adaptive icons masked to a circle with a Volt ring on the focused app ☑ (interim, D-025); monochrome/themed icons for the Volt focus state ☐
-- ☐ Choose and reorder the apps on the arc; persist the choice
-- ☐ More than 7 apps: the arc scrolls, plus an "all apps" view that is **not a grid** (see open questions)
-- ☐ App search from the command field (letters to apps, then contacts and settings later)
-- ☐ Long press: app shortcuts (`LauncherApps.getShortcuts`), app info, uninstall
-- ☐ Work profile and private space apps, marked as such
+- ☑ Choose and reorder the apps on the arc, saved on the phone; first filled with the default apps (D-026)
+- ☑ More than 7 apps: the arc scrolls, plus the Apps list, **not a grid**: A to Z with letter headings and a letter index, opened by an up swipe on the arc (D-026)
+- ◐ App search from the command field: apps ☑ (prefix, word, anywhere; Turkish-aware; Go opens the best match); contacts and settings ☐
+- ☑ Long press on the arc or in the list: app shortcuts (while Halo is the default home app), Add to / Remove from arc, Move left / right, App info, Uninstall (not for system apps)
+- ◐ Work profile apps listed, launched in their profile and marked `WORK` ☑; private space (Android 15) ☐
 - ☐ Home "NOW", agenda and action card fed by real data (Phase 4), with a clean empty state when permissions are missing
 
 **Exit:** a phone with 100+ apps installed can reach every app from the launcher within two gestures, without a grid.
+
+*Status (2026-10-26):* built and covered by widget tests; Apps, search and the menu are proposals awaiting the owner (D-026). On a Galaxy S20 FE (Android 13, 150 apps, release build): the arc filled with the default apps, Apps opened by an up swipe on the arc, the letter index jumped, Turkish-aware search found apps with the Samsung keyboard. Not yet checked on the phone: the long-press menu, shortcuts and uninstall.
 
 ## Phase 4: Calendar and notifications
 - ☐ Calendar via `CalendarContract` (`READ_CALENDAR`): Home "NOW", the `TODAY` agenda and the next-event card
@@ -106,7 +108,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - **Gestures (D-023):** Android owns the bottom edge (home, Overview) and the side edges (back), and the top edge opens the system shade. Halo's edge swipes need new homes: swipes inside Home (down on the upper area for Stream/Switchboard, up on the arc for Recents) or on-screen affordances.
 - **Status bar (D-024):** keep the system status bar, or hide it on Home and draw the Halo `StatusRow` instead. Today both show, so time and battery appear twice.
 - **Wallpaper:** "no glass" means the launcher draws its own opaque background. Ignore the system wallpaper, or offer Halo backgrounds only?
-- **Arc with more than 7 apps** and an "all apps" view that respects "no grid".
+- **Apps view (D-026):** built as a list reached by an up swipe on the arc. Still open: the gesture, how much Volt the list carries, and drag-to-reorder on the arc.
 - **Min SDK (D-018):** proposed Android 10 (API 29); the code uses 29.
 - **Motion spec:** none exists. DESIGN_SYSTEM §8 has interim rules.
 - **AI approach** for summaries and Ask Halo.

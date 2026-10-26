@@ -82,8 +82,9 @@ Android 10 (API 29) brings `RoleManager.ROLE_HOME` (asking to become the default
 `halo_android` holds the Kotlin side (LauncherApps, intents, later notifications, calendar, settings) and the Dart `AndroidBackend` that implements `HaloBackend`. The launcher only sees `HaloBackend`, so `halo_sdk` stays pure Dart and the mock keeps working on macOS. One `MethodChannel` for calls and one `EventChannel` for changes; messages are maps of standard types.
 *Alternatives:* Kotlin in the launcher's own `android/` module (fewer packages, but the backend can't be tested on its own), Pigeon codegen (typed, but one more pinned dependency and generated code to review).
 
-## D-020 · Application id `com.baklavapp.halolauncher`. **Proposed** (2026-10-26)
-The id can't change once the app is published, so the owner should confirm it before the first store upload. It is also the Kotlin package name.
+## D-020 · Application id `com.baklavapp.halolauncher`. **Decided** (2026-10-26)
+The id can't change once the app is published. It is also the Kotlin package name of the app (`com.baklavapp.halolauncher`) and of the plugin (`com.baklavapp.halolauncher.platform`).
+*History:* proposed as `com.harundemir.halolauncher`; the owner chose `com.baklavapp.halolauncher` before anything was published.
 
 ## D-021 · Lock design on Android. **Open**
 A launcher can't replace the keyguard. Options: an at-a-glance page reached from Home, the screen shown once after unlock, or drop it. Until decided, the Android build starts on Home and Lock is reachable only with `--dart-define=HALO_START=lock`.
@@ -99,4 +100,12 @@ The launcher draws edge to edge behind transparent system bars, and lays out the
 
 ## D-025 · App icons on the arc, interim. **Proposed** (2026-10-26)
 The designs draw every app as an outline glyph, Volt-filled when focused. Real apps bring their own icons. Until Phase 3 decides (monochrome icons tinted like the glyphs is the likely answer), the arc shows each app's icon masked to a circle, and the focused one gets a Volt ring. Volt still means "the active one".
+
+## D-026 · Apps: a list, the arc you keep, and a long-press menu. **Proposed** (2026-10-26)
+The designs have no "all apps" view. With 100+ apps the arc alone can't reach everything, and rule 01 forbids a grid. Proposal, built in Phase 3:
+- **Apps screen:** an up swipe on the arc (the band above the bottom edge, so the edge still means Recents on desktop) opens one list of every app. Title `Apps` with a Volt count, a working command field ("find an app"), then A to Z with mono letter headings and a letter index down the right edge (the letter in view is Volt: current). Rows are a 40 px app circle, the name in `rowTitle`, and mono tags: `WORK`, and a Volt `ON ARC` (yours).
+- **Search:** label prefix, then word prefix, then anywhere; case and Latin accents (Turkish included) ignored. Go opens the best match. Two gestures reach any app: open Apps, then type or jump by letter.
+- **The arc you keep:** the arc shows the apps the user pins, in their order, saved on the phone. The first time it is filled with the default apps for the Home design's roles (maps, music, messages, camera, browser, phone; Notes has no standard role), or the first seven apps when none resolve.
+- **Long-press menu** (on the arc and in the list): a solid `surface` notch card with the app's shortcuts (only while Halo is the default home app, an Android rule), Add to / Remove from arc, Move left / right, App info and Uninstall (hidden for system apps). No scrim: tapping outside or back closes it.
+*Open for the owner:* the gesture (up on the arc versus an on-screen affordance), whether the per-row `ON ARC` Volt is too much Volt, and how reordering should feel (drag on the arc instead of Move left / right).
 

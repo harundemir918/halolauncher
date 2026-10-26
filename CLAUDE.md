@@ -78,7 +78,7 @@ cd packages/halo_android && flutter analyze && flutter test
 
 # Launcher on macOS, 390 x 844 window, mock data. Starts on Lock; swipe edges to move around.
 cd launcher && flutter run -d macos
-# Open on another screen: --dart-define=HALO_START=lock|home|switchboard|stream|recents|system
+# Open on another screen: --dart-define=HALO_START=lock|home|apps|switchboard|stream|recents|system
 cd launcher && flutter test                 # add --update-goldens after a deliberate visual change
 
 # Launcher on an Android device or emulator (Android backend, starts on Home)
