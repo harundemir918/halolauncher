@@ -1,9 +1,32 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Package visibility (Android 11+): see every app that has a launcher entry. -->
+    <!-- Uninstall from the long-press menu; the system still asks the user. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <!-- Package visibility (Android 11+). -->
     <queries>
+        <!-- Every app that has a launcher entry. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- The default apps that fill the arc the first time. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_MUSIC" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.STILL_IMAGE_CAMERA" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
         </intent>
     </queries>
 </manifest>

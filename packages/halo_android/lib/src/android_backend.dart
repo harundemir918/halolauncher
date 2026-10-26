@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -6,11 +7,12 @@ import 'package:halo_sdk/halo_sdk.dart';
 
 /// [HaloBackend] on an Android phone, over the `halo_android` channels.
 ///
-/// Phase 1 serves the clock, installed apps (with icons), launching, battery,
-/// the default home app and Home presses. Everything else is empty until its
-/// phase lands (ROADMAP): no agenda, notifications or Recents, and Switchboard
-/// and System hold their values only in memory. Empty, not invented
-/// (CLAUDE.md rule 1).
+/// Serves the clock, installed apps in every profile (with icons), the arc
+/// the user keeps, launching, shortcuts, App info and uninstall, battery, the
+/// default home app and Home presses. The arc, appearance and text size are
+/// saved on the phone. Everything else is empty until its phase lands
+/// (ROADMAP): no agenda, notifications or Recents, and Switchboard holds its
+/// values only in memory. Empty, not invented (CLAUDE.md rule 1).
 class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   AndroidBackend._();
 
@@ -20,11 +22,20 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   /// Icon edge in pixels: the focused arc app (68) at a 2x scale, rounded up.
   static const iconSize = 144;
 
-  /// Loads apps, battery and the default home state before the first frame,
-  /// so Home never paints an empty arc. Icons follow in the background.
+  /// How many apps fill the arc the first time when no default apps resolve.
+  static const firstArcSize = 7;
+
+  /// Loads apps, the arc, settings, battery and the default home state before
+  /// the first frame, so Home never paints an empty arc. Icons follow.
   static Future<AndroidBackend> create() async {
     final b = AndroidBackend._();
-    await Future.wait([b._loadApps(), b._loadBattery(), b._loadDefaultHome()]);
+    await Future.wait([
+      b._loadApps(),
+      b._loadBattery(),
+      b._loadDefaultHome(),
+      b._loadSettings(),
+    ]);
+    await b._loadArc();
     b._subscription = _events.receiveBroadcastStream().listen(b._onEvent);
     WidgetsBinding.instance.addObserver(b);
     b._tickEachMinute();
@@ -108,6 +119,8 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           id: a['id'] as String,
           label: a['label'] as String,
           icon: _icons[a['id']],
+          work: a['work'] as bool? ?? false,
+          canUninstall: a['canUninstall'] as bool? ?? true,
         ),
     ];
     final missing = [
@@ -124,16 +137,108 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     });
     if (icons == null || icons.isEmpty) return;
     _icons.addAll(icons);
-    _apps = [
-      for (final a in _apps)
-        HaloAppInfo(id: a.id, label: a.label, icon: _icons[a.id]),
-    ];
+    _apps = [for (final a in _apps) a.withIcon(_icons[a.id])];
     _notify();
   }
 
   @override
   Future<bool> launch(String id) async =>
       await _methods.invokeMethod<bool>('launch', {'id': id}) ?? false;
+
+  // The arc: ids in order, saved as JSON under `arc`. Ids of apps that are
+  // gone stay saved (an app being updated disappears for a moment) but are
+  // not shown.
+
+  List<String> _arc = [];
+
+  @override
+  List<HaloAppInfo> get arcApps {
+    final byId = {for (final a in _apps) a.id: a};
+    return [for (final id in _arc) ?byId[id]];
+  }
+
+  Future<void> _loadArc() async {
+    final saved = await _methods.invokeMethod<String>('getPref', {
+      'key': 'arc',
+    });
+    if (saved != null) {
+      _arc = (jsonDecode(saved) as List).cast<String>();
+      return;
+    }
+    final defaults =
+        await _methods.invokeListMethod<String>('defaultApps') ?? const [];
+    _arc = defaults.isNotEmpty
+        ? [...defaults]
+        : [for (final a in _apps.take(firstArcSize)) a.id];
+    await _saveArc();
+  }
+
+  Future<void> _saveArc() => _methods.invokeMethod<void>('setPref', {
+    'key': 'arc',
+    'value': jsonEncode(_arc),
+  });
+
+  void _arcChanged() {
+    unawaited(_saveArc());
+    _notify();
+  }
+
+  @override
+  void pinToArc(String id) {
+    if (_arc.contains(id) || !_apps.any((a) => a.id == id)) return;
+    _arc.add(id);
+    _arcChanged();
+  }
+
+  @override
+  void unpinFromArc(String id) {
+    if (_arc.remove(id)) _arcChanged();
+  }
+
+  @override
+  void moveOnArc(String id, int by) {
+    // Move among the shown apps, so hidden (missing) ids don't eat a step.
+    final shown = arcApps.map((a) => a.id).toList();
+    final from = shown.indexOf(id);
+    if (from < 0) return;
+    final to = (from + by).clamp(0, shown.length - 1);
+    if (to == from) return;
+    shown
+      ..removeAt(from)
+      ..insert(to, id);
+    final hidden = _arc.where((x) => !shown.contains(x));
+    _arc = [...shown, ...hidden];
+    _arcChanged();
+  }
+
+  // Long-press actions
+
+  @override
+  Future<List<AppShortcut>> shortcuts(String appId) async {
+    final list =
+        await _methods.invokeListMethod<Map>('shortcuts', {'id': appId}) ??
+        const [];
+    return [
+      for (final s in list)
+        AppShortcut(id: s['id'] as String, label: s['label'] as String),
+    ];
+  }
+
+  @override
+  Future<bool> startShortcut(String appId, String shortcutId) async =>
+      await _methods.invokeMethod<bool>('startShortcut', {
+        'id': appId,
+        'shortcut': shortcutId,
+      }) ??
+      false;
+
+  @override
+  Future<void> openAppInfo(String appId) =>
+      _methods.invokeMethod<void>('appInfo', {'id': appId});
+
+  @override
+  Future<void> uninstall(String appId) =>
+      _methods.invokeMethod<void>('uninstall', {'id': appId});
 
   // Default home app
 
@@ -197,7 +302,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   @override
   void setPlaying(bool playing) {}
 
-  // System: the launcher's own settings. Not persisted yet.
+  // System: the launcher's own settings, saved as `appearance` and `textSize`.
 
   SystemState _system = const SystemState(
     account: Account(name: '', initials: ''),
@@ -210,15 +315,34 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   @override
   SystemState get system => _system;
 
+  Future<void> _loadSettings() async {
+    Future<String?> get(String key) =>
+        _methods.invokeMethod<String>('getPref', {'key': key});
+    final [appearance, textSize] = await Future.wait([
+      get('appearance'),
+      get('textSize'),
+    ]);
+    _system = _system.copyWith(
+      appearance: Appearance.values.asNameMap()[appearance],
+      textSize: double.tryParse(textSize ?? ''),
+    );
+  }
+
+  void _savePref(String key, String value) => unawaited(
+    _methods.invokeMethod<void>('setPref', {'key': key, 'value': value}),
+  );
+
   @override
   void setAppearance(Appearance appearance) {
     _system = _system.copyWith(appearance: appearance);
+    _savePref('appearance', appearance.name);
     _notify();
   }
 
   @override
   void setTextSize(double value) {
     _system = _system.copyWith(textSize: value.clamp(0.0, 1.0));
+    _savePref('textSize', '${_system.textSize}');
     _notify();
   }
 
