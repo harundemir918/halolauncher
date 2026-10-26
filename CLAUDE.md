@@ -38,6 +38,7 @@ In `docs/DECISIONS.md`, D-001 to D-016 date from Halo OS; the ones marked *Super
 5. **Missing permissions are normal.** Notification access, calendar, usage access, write settings and DND access are all optional grants. Every screen must render and stay usable without them, with a clear way to grant them.
 6. **Personal data stays on the device.** Notifications, calendar, contacts and usage data are never sent off the device unless the user explicitly opts in.
 7. **No network at runtime for assets.** Fonts and images are bundled. Never use `google_fonts` runtime fetching.
+8. **No AI.** The owner decided Halo integrates no AI, on the phone or in the cloud (D-012). Summaries, the NOW pick, priority and Ask Halo are rule-based. Ask Halo may hand off to the assistant the user picked in Android (D-027).
 
 ## Languages and where they go
 

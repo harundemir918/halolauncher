@@ -42,8 +42,9 @@ The first phone is **Open** (OnePlus 6/6T, PinePhone Pro, Fairphone…).
 ## D-011 · Bluetooth and cellular stacks. **Open** · **Superseded** by D-017 (2026-10-26)
 BlueZ and ModemManager both want D-Bus. Options: a private dbus-broker behind a Halo service, or our own thin layers (QMI/MBIM for modems).
 
-## D-012 · Halo intelligence (summaries, Ask Halo). **Open**
-On-device model versus opt-in cloud, the privacy model and the hardware requirements. The design depends on it (Stream summary card, Home "NOW"), so a rule-based fallback must exist.
+## D-012 · Halo intelligence (summaries, Ask Halo). **Decided** (2026-10-26): no AI
+The owner decided Halo integrates no AI: no on-device model, no cloud model. The Stream summary, the Home "NOW" pick, notification priority and Ask Halo are rule-based, built from Halo's own data on the phone. Ask Halo may hand off to the assistant the user picked in Android (D-027); that app is the user's choice, not part of Halo.
+*History:* was Open (on-device model versus opt-in cloud).
 
 ## D-013 · Light appearance. **Decided** (2026-10-26): palette and components; **Open**: what `Auto` follows
 The owner supplied the light designs (`design/source/*Light.dc.html`, `design/screens/*_light.png`). Same layout and shapes with swapped tokens: Volt splits into fill (with an ink edge), Moss for lines and Olive for text; switches invert; hairlines become ink at role-dependent alphas. The full map is DESIGN_SYSTEM §2b.
@@ -116,4 +117,10 @@ The designs have no "all apps" view. With 100+ apps the arc alone can't reach ev
 - **Private space** (Android 15+): its apps appear, tagged `PRIVATE`, only while it is unlocked; a row at the end of Apps locks or unlocks it (the system asks for the lock).
 - **On a phone, the bottom edge of Home opens Apps too**, since a thumb starts just above the gesture bar and Recents is empty on Android until Phase 6 (see D-023).
 *Open for the owner:* the gesture (up on the arc versus an on-screen affordance), whether the per-row `ON ARC` Volt is too much Volt, and how reordering should feel (drag on the arc instead of Move left / right).
+
+## D-027 · The Ask Halo button. **Decided** (2026-10-26)
+The designs show the button under the arc but not what it does. Owner approved:
+- **Tap:** opens search (the Apps screen) with the keyboard up, placeholder "find anything": apps, contacts and settings pages (D-026).
+- **Long press:** opens the assistant the user picked in Android (`ACTION_ASSIST`, else `ACTION_VOICE_COMMAND`); nothing happens if there is none. Halo has no assistant of its own (D-012).
+- **Later (Phase 7):** rule-based commands typed into the same field ("next", "reply Elif …", "dark", "battery").
 

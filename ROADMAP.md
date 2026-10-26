@@ -58,6 +58,10 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 *Status (2026-10-26): done.* The exit holds: on a Galaxy S20 FE (Android 13, 150 apps, release build) every app is two gestures away (open Apps, then type or jump by letter). Checked there: the arc filled with the default apps, Apps by an up swipe, the letter index, Turkish-aware search with the Samsung keyboard, the keyboard keeping the frame full size. Checked on a Pixel 10 Pro emulator (Android 17): the monochrome focus state, the long-press menu with a real shortcut, Move right, contact search through the permission dialog, opening a contact and a settings page, and locking and unlocking a private space. Not checked on a device: Uninstall's system dialog. The Apps design (D-026) is still a proposal awaiting the owner.
 
+## Phase 3b: Ask Halo, step 1 ☑
+- ☑ Tap Ask Halo: search opens with the keyboard up ("find anything": apps, contacts, settings) (D-027)
+- ☑ Long press: the assistant the user picked in Android, if any; Halo has no AI of its own (D-012)
+
 ## Phase 4: Calendar and notifications
 - ☐ Calendar via `CalendarContract` (`READ_CALENDAR`): Home "NOW", the `TODAY` agenda and the next-event card
 - ☐ `NotificationListenerService` with an onboarding flow for the special access grant
@@ -85,13 +89,14 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 **Exit:** Recents and the glance screen work on a phone with only the permissions the user granted.
 
-## Phase 7: Halo intelligence
-- ☐ Decide on-device versus cloud and the privacy model
-- ☐ Rule-based first: the Stream summary ("Halo read 11 things for you / 3 need you"), the Home "NOW" pick, notification priority
-- ☐ Ask Halo from the Home arc (voice and text), or hand off to the default assistant
-- ☐ The rule-based path stays as the fallback when no model is available
+## Phase 7: Rule-based Halo (no AI, D-012)
+- ☑ Decided: no AI, on the phone or in the cloud (D-012)
+- ☐ The Stream summary from rules ("Halo read 11 things for you / 3 need you"): what counts as read, what needs you (replies waiting, missed calls, events soon)
+- ☐ The Home "NOW" pick from rules: the next event, else the top message, else "Clear for the day"
+- ☐ Notification priority from rules (people over apps, the user's starred contacts, Focus)
+- ☐ Ask Halo step 2: rule-based commands typed into the search field ("next", "reply Elif …", "dark", "battery"), shown as results above the search sections
 
-**Exit:** summaries run within the latency and privacy budgets, with no data leaving the device unless the user opts in.
+**Exit:** summaries, the NOW pick and commands work offline from Halo's own data, with nothing leaving the phone.
 
 ## Phase 8: Release
 - ☐ Performance: cold start of the launcher, 60/120 fps on the arc, slats and transitions on a mid-range phone; low memory use so Android doesn't kill the launcher
@@ -112,4 +117,4 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - **Apps view (D-026):** built as a list reached by an up swipe on the arc. Still open: the gesture, how much Volt the list carries, and drag-to-reorder on the arc.
 - **Min SDK (D-018):** proposed Android 10 (API 29); the code uses 29.
 - **Motion spec:** none exists. DESIGN_SYSTEM §8 has interim rules.
-- **AI approach** for summaries and Ask Halo.
+- **Ask Halo commands:** which commands to support first (Phase 7, D-027).
