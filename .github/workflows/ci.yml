@@ -33,10 +33,34 @@ jobs:
           dart format --output=none --set-exit-if-changed .
           dart analyze
           dart test
+      - name: halo_android
+        working-directory: packages/halo_android
+        run: |
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test
       # Goldens are rendered on macOS, so CI skips the `golden` tag for now.
-      - name: shell
-        working-directory: shell
+      - name: launcher
+        working-directory: launcher
         run: |
           dart format --output=none --set-exit-if-changed .
           flutter analyze
           flutter test --exclude-tags golden
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - id: flutter
+        run: echo "version=$(cat .flutter-version)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter.outputs.version }}
+          channel: stable
+      - name: debug APK
+        working-directory: launcher
+        run: flutter build apk --debug
