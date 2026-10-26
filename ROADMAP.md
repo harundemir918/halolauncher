@@ -1,6 +1,6 @@
 # Halo Launcher roadmap
 
-Halo started as a mobile OS on the Linux kernel. It is now an **Android launcher built with Flutter**. The designs in `design/`, the design system (`packages/halo_ui`), the service interface and its mock (`packages/halo_sdk`) and the six screens in `shell/` carry over. The kernel, init, compositor and embedder work does not.
+Halo started as a mobile OS on the Linux kernel. It is now an **Android launcher built with Flutter**. The designs in `design/`, the design system (`packages/halo_ui`), the service interface and its mock (`packages/halo_sdk`) and the six screens (now in `launcher/`) carry over. The kernel, init, compositor and embedder work does not.
 
 Phases are sequential, but work can overlap. Each phase lists exit criteria, and a phase is done only when all of them hold.
 
@@ -12,38 +12,40 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - ☑ README, ROADMAP and CLAUDE.md rewritten for the launcher
 - ☑ Fresh git repository (old OS history archived outside the repo as `../halo_os-git-backup-2026-10-26.tar.gz`)
 - ☑ Remove the OS-only trees: `system/`, `kernel/`, `embedder/`, `build/`, `tools/`, `third_party/`, `rust-toolchain.toml`, `docs/screenshots/` (the font licenses already live in `packages/halo_ui/assets/licenses`)
-- ☐ Rewrite `docs/ARCHITECTURE.md` (launcher app, platform channels, `halo_sdk` backends, Android permissions) and `docs/DECISIONS.md` (close the OS decisions, add the launcher ones: min SDK, Lock, Recents, gestures). Drop or replace `docs/BUILD.md`
-- ◐ CI: Dart only (format, analyze, test for `halo_ui`, `halo_sdk` and the launcher) ☑, plus an Android debug build ☐
-- ☐ Pin versions: Flutter (`.flutter-version`), Android Gradle Plugin, Kotlin, `compileSdk` / `targetSdk` / `minSdk`
+- ☑ Rewrite `docs/ARCHITECTURE.md` and `docs/DECISIONS.md` (OS decisions superseded, launcher ones D-017 to D-025), drop `docs/BUILD.md`
+- ☑ CI: format, analyze and test for `halo_ui`, `halo_sdk`, `halo_android` and the launcher, plus an Android debug build
+- ☑ Pin versions: Flutter 3.47.4 (`.flutter-version`), AGP 9.1.0, Kotlin 2.4.0, Gradle 9.3.1, `minSdk` 29 / `targetSdk` and `compileSdk` 36 (D-018)
 
 **Exit:** a clean checkout contains only the launcher, its packages, the designs and the docs, and CI is green.
 
 ## Phase 1: Launcher skeleton on Android
-- ☐ Move `shell/` to `launcher/`, add the Android platform, application id and app name
-- ☐ Register as a home app (`MAIN` + `HOME` intent filter, `singleTask`), and offer to become the default launcher (`RoleManager.ROLE_HOME`)
-- ☐ Home button returns to Home Arc; the back gesture never leaves the launcher
-- ☐ Edge-to-edge drawing, system bar colors from the Halo palette, safe areas and display cutouts
-- ☐ Scale the 390-wide design frame to real screen sizes and densities (phones first; tablets and foldables later)
-- ☐ Platform channel package (Kotlin): installed apps via `LauncherApps`, launch, app info, uninstall, package change events
-- ☐ `HaloBackend` Android implementation (`HALO_BACKEND=android`), with the mock kept for macOS, tests and goldens
-- ☐ Keep the macOS mock run working as the fast UI loop
+- ☑ Move `shell/` to `launcher/`, add the Android platform, application id (`com.harundemir.halolauncher`, D-020) and app name (Halo)
+- ☑ Register as a home app (`MAIN` + `HOME` intent filter, `singleTask`), and offer to become the default launcher (`RoleManager.ROLE_HOME`) from a Home action card
+- ☑ Home button returns to Home Arc; the back gesture never leaves the launcher
+- ☑ Edge-to-edge drawing, transparent system bars with icons matching the appearance, launch theme in the Halo ground, safe areas (D-024). Display cutouts in landscape are not handled (the launcher is portrait)
+- ◐ Scale the 390-wide design frame to real screen sizes and densities (`DesignFrame`, D-024) ☑ for phones; tablets and foldables ☐
+- ☑ Platform plugin `packages/halo_android` (Kotlin, D-019): installed apps via `LauncherApps`, icons, launch, package change events, battery, default home state, Home presses. App info and uninstall move to Phase 3 with the long press
+- ☑ `HaloBackend` Android implementation (`AndroidBackend`, the default on Android), with the mock kept for macOS, tests and goldens
+- ☑ Keep the macOS mock run working as the fast UI loop
 
 **Exit:** installed on a physical phone, set as the default launcher, Home Arc lists the real installed apps and launches them, and Home returns to the launcher.
+
+*Status (2026-10-26):* met on the Pixel 10 emulator (API 37): Halo set as the home app, the installed apps on the arc with their icons, an app launched from the arc, Home and back return to Halo, both appearances. Not yet tried on a physical phone.
 
 ## Phase 2: Design system and screens (carried over)
 - ☑ `packages/halo_ui`: tokens (colors, type, notch radii, spacing), bundled fonts, `NotchBorder`, `HaloTheme`
 - ◐ Widgets: all done except CommandField ◐ (looks right, no text entry yet): Switch, ToggleRow, Segmented, Slider, Buttons, BatteryLine, BatteryCells, Kicker, Dial, Slats, Timeline, Arc, plus StatusRow, EventCard, ActionCard, AgendaRow, SummaryCard, MediaStrip, Avatar, Chip, icons
 - ◐ `packages/halo_sdk` API surface plus the **mock** backend (fixtures matching the design copy: Elif, Design review, Room 3…). Clock, status, next event and notifications so far
-- ☑ Screens: Lock, Home Arc, Recents, Switchboard, Stream, System (`shell/`). System: only Display has designed contents; the other sections say "not designed yet"
+- ☑ Screens: Lock, Home Arc, Recents, Switchboard, Stream, System (`launcher/`). System: only Display has designed contents; the other sections say "not designed yet"
 - ☑ Navigation and gestures on desktop: hold-to-open, the arc's drag/focus/launch, slat focus and flick-to-close, edge swipes (top right Switchboard, top left Stream, bottom up Home then Recents)
-- ◐ Golden tests at 390 × 844 @2x: every screen has one (`shell/test/goldens/`), compared with `design/screens/*.png` by eye, not by pixel diff. CI skips them (`--exclude-tags golden`)
+- ◐ Golden tests at 390 × 844 @2x: every screen has one (`launcher/test/goldens/`), compared with `design/screens/*.png` by eye, not by pixel diff. CI skips them (`--exclude-tags golden`)
 - ☑ Light appearance: palette, every widget and screen reading it, theme picked from System > Appearance (Auto follows the platform), light goldens against `design/screens/*_light.png`
 - ☐ Accessibility pass: semantics labels, text scaling (System > Text size, and Android font scale), reduce motion (Android "remove animations")
 
 **Exit:** all six screens match the designs in golden tests in both appearances, and the launcher is fully navigable on macOS with mock data.
 
 ## Phase 3: Home Arc with real apps
-- ☐ Real app icons, drawn as circles (adaptive icons masked to a circle; monochrome/themed icons for the Volt focus state)
+- ◐ Real app icons, drawn as circles: adaptive icons masked to a circle with a Volt ring on the focused app ☑ (interim, D-025); monochrome/themed icons for the Volt focus state ☐
 - ☐ Choose and reorder the apps on the arc; persist the choice
 - ☐ More than 7 apps: the arc scrolls, plus an "all apps" view that is **not a grid** (see open questions)
 - ☐ App search from the command field (letters to apps, then contacts and settings later)
@@ -99,12 +101,12 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 ---
 
 ## Open questions
-- **Lock:** Android doesn't let a launcher replace the keyguard. Options: an at-a-glance page left of Home, the screen shown right after unlock, or drop it.
-- **Recents:** the system recents (Overview) belongs to the system launcher; third-party launchers can't show live task surfaces or close tasks. Halo's Recents is a recently used apps view; should the system Overview still be reachable?
-- **Gestures:** Android owns the bottom edge (home, Overview) and the side edges (back), and the top edge opens the system shade. Halo's edge swipes need new homes: swipes inside Home (down on the upper area for Stream/Switchboard, up on the arc for Recents) or on-screen affordances.
-- **Status bar:** keep the system status bar, or hide it on Home and draw the Halo `StatusRow` instead.
+- **Lock (D-021):** Android doesn't let a launcher replace the keyguard. Options: an at-a-glance page left of Home, the screen shown right after unlock, or drop it.
+- **Recents (D-022):** the system recents (Overview) belongs to the system launcher; third-party launchers can't show live task surfaces or close tasks. Halo's Recents is a recently used apps view; should the system Overview still be reachable?
+- **Gestures (D-023):** Android owns the bottom edge (home, Overview) and the side edges (back), and the top edge opens the system shade. Halo's edge swipes need new homes: swipes inside Home (down on the upper area for Stream/Switchboard, up on the arc for Recents) or on-screen affordances.
+- **Status bar (D-024):** keep the system status bar, or hide it on Home and draw the Halo `StatusRow` instead. Today both show, so time and battery appear twice.
 - **Wallpaper:** "no glass" means the launcher draws its own opaque background. Ignore the system wallpaper, or offer Halo backgrounds only?
 - **Arc with more than 7 apps** and an "all apps" view that respects "no grid".
-- **Min SDK:** proposal: Android 10 (API 29) or later.
+- **Min SDK (D-018):** proposed Android 10 (API 29); the code uses 29.
 - **Motion spec:** none exists. DESIGN_SYSTEM §8 has interim rules.
 - **AI approach** for summaries and Ask Halo.

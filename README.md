@@ -12,9 +12,15 @@ Halo puts what matters now at the top of the screen and your apps on an arc with
 
 Every screen also has a light version (`design/screens/*_light.png`).
 
+On Android today (Phase 1): your installed apps on the arc, with their own icons.
+
+| Light | Dark |
+|---|---|
+| ![](docs/screenshots/android-home-light.png) | ![](docs/screenshots/android-home-dark.png) |
+
 ## Status
 
-Pre-alpha. The Halo OS project is being turned into an Android launcher. The design system (`packages/halo_ui`), the service interface with its mock backend (`packages/halo_sdk`) and all six screens running on macOS with mock data carry over. Android integration comes next. See [ROADMAP.md](ROADMAP.md).
+Pre-alpha. Halo installs on Android, can become the default home app, lists the installed apps on the arc and launches them. Calendar, notifications, quick controls and Recents come next; until then those screens are empty on a phone. All six screens also run on macOS with the design's mock data. See [ROADMAP.md](ROADMAP.md).
 
 ## What it does on Android
 
@@ -32,24 +38,29 @@ Pre-alpha. The Halo OS project is being turned into an Android launcher. The des
 ```
 design/      design exports (PNG) and sources (.dc.html). The visual reference
 docs/        design system and project docs
-packages/    halo_ui (tokens, fonts, widgets), halo_sdk (service API, mock and Android backends)
-shell/       the launcher app (Flutter). To be moved to launcher/ when the Android target is added
+packages/    halo_ui (tokens, fonts, widgets), halo_sdk (service API and mock),
+             halo_android (Kotlin platform layer and the Android backend)
+launcher/    the launcher app (Flutter)
 ```
 
 ## Run it
 
 ```sh
+# On an Android phone or emulator (Android 10 or later)
+cd launcher && flutter run -d <device>
+# Then press Home and pick Halo, or tap Yes on the "Set Halo as home?" card.
+
 # On macOS, 390 × 844 window, mock data
-cd shell && flutter run -d macos --dart-define=HALO_BACKEND=mock
+cd launcher && flutter run -d macos
 
 # Token and widget gallery
 cd packages/halo_ui/example && flutter run -d macos
 ```
 
-Running on an Android device comes with Phase 1 of the roadmap.
-
 ## Documentation
 
 - [ROADMAP.md](ROADMAP.md): phases and exit criteria
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the launcher app, the platform layer, testing
 - [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md): tokens, components, screens
+- [docs/DECISIONS.md](docs/DECISIONS.md): decision log
 - [CLAUDE.md](CLAUDE.md): working guide for AI agents and contributors
