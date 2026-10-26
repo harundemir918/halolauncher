@@ -33,11 +33,11 @@ void main() {
 
   testWidgets('shows the design copy', (tester) async {
     await pumpHome(tester);
-    expect(find.textContaining('09:41', findRichText: true), findsOneWidget);
-    expect(
-      find.textContaining('FRI 23.10', findRichText: true),
-      findsOneWidget,
-    );
+    // Android's status bar shows the time and battery; Halo's row leads to
+    // Stream and Switchboard instead (D-024).
+    expect(find.text('STREAM'), findsOneWidget);
+    expect(find.text('SWITCHBOARD'), findsOneWidget);
+    expect(find.textContaining('09:41', findRichText: true), findsNothing);
     expect(find.text('NOW'), findsOneWidget);
     expect(find.text('Design review\nin 19 min'), findsOneWidget);
     expect(find.text('ROOM 3 · 2 MIN WALK · 4 PEOPLE'), findsOneWidget);

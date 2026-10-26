@@ -13,6 +13,7 @@ import 'apps/apps_screen.dart';
 import 'design_frame.dart';
 import 'dev/bench_screen.dart';
 import 'gestures.dart';
+import 'shell_nav.dart';
 import 'home/home_screen.dart';
 import 'lock/lock_screen.dart';
 import 'recents/recents_screen.dart';
@@ -123,6 +124,13 @@ class _HaloLauncherState extends State<HaloLauncher> {
     }
   }
 
+  /// Opens a screen from inside one (the status row's Stream / Switchboard).
+  void _open(String screen) => setState(() {
+    _screen = screen;
+    _menu = null;
+    _ask = false;
+  });
+
   /// Back closes the menu first, then returns to Home.
   void _back() => _menu != null ? _closeMenu() : _goHome();
 
@@ -199,26 +207,30 @@ class _HaloLauncherState extends State<HaloLauncher> {
                 // The keyboard shortens the design frame instead (DesignFrame).
                 resizeToAvoidBottomInset: false,
                 body: DesignFrame(
-                  child: Stack(
-                    children: [
-                      // Lock only opens with the hold ring, so it has no edge
-                      // swipes. On Home, an up swipe on the arc opens Apps.
-                      if (_screen == 'lock')
-                        screen
-                      else
-                        EdgeSwipes(
-                          onSwipe: _onSwipe,
-                          lowerArea: _screen == 'home' ? HaloArc.dragZone : 0,
-                          child: screen,
-                        ),
-                      if (_menu case final app?)
-                        AppMenuLayer(
-                          key: ValueKey('menu-${app.id}'),
-                          backend: widget.backend,
-                          app: app,
-                          onClose: _closeMenu,
-                        ),
-                    ],
+                  child: ShellNav(
+                    current: _screen,
+                    open: _open,
+                    child: Stack(
+                      children: [
+                        // Lock only opens with the hold ring, so it has no edge
+                        // swipes. On Home, an up swipe on the arc opens Apps.
+                        if (_screen == 'lock')
+                          screen
+                        else
+                          EdgeSwipes(
+                            onSwipe: _onSwipe,
+                            lowerArea: _screen == 'home' ? HaloArc.dragZone : 0,
+                            child: screen,
+                          ),
+                        if (_menu case final app?)
+                          AppMenuLayer(
+                            key: ValueKey('menu-${app.id}'),
+                            backend: widget.backend,
+                            app: app,
+                            onClose: _closeMenu,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),

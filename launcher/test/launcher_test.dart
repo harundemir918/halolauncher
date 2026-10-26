@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_launcher/design_frame.dart';
 import 'package:halo_launcher/home/home_screen.dart';
 import 'package:halo_launcher/main.dart';
+import 'package:halo_launcher/stream/stream_screen.dart';
 import 'package:halo_launcher/switchboard/switchboard_screen.dart';
 import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
@@ -242,13 +243,6 @@ void main() {
     }
   });
 
-  testWidgets('the status row drops an empty network label', (tester) async {
-    await pumpLauncher(tester, PhoneBackend(empty: true));
-    expect(find.textContaining('· 50%'), findsNothing);
-    expect(find.textContaining('50%'), findsOneWidget);
-    expect(find.byType(HaloStatusRow), findsOneWidget);
-  });
-
   testWidgets('Home picks its start focus once the arc has apps', (
     tester,
   ) async {
@@ -287,6 +281,56 @@ void main() {
       matching: find.byKey(const ValueKey('mono')),
     );
     expect(other, findsOneWidget);
+  });
+
+  group('status row', () {
+    testWidgets('STREAM opens the Stream, SWITCHBOARD the Switchboard', (
+      tester,
+    ) async {
+      await pumpLauncher(tester, PhoneBackend());
+      await tester.tap(find.byKey(const ValueKey('status-stream')));
+      await tester.pumpAndSettle();
+      expect(find.byType(StreamScreen), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('status-switchboard')));
+      await tester.pumpAndSettle();
+      expect(find.byType(SwitchboardScreen), findsOneWidget);
+    });
+
+    testWidgets('the screen shown is Volt, the other bone', (tester) async {
+      await pumpLauncher(tester, PhoneBackend(), start: 'switchboard');
+      expect(
+        tester.widget<Text>(find.text('SWITCHBOARD')).style!.color,
+        HaloColors.volt,
+      );
+      expect(
+        tester.widget<Text>(find.text('STREAM')).style!.color,
+        HaloColors.bone,
+      );
+    });
+
+    testWidgets('a Flare dot before STREAM while something is unread', (
+      tester,
+    ) async {
+      Iterable<Color?> dots() => tester
+          .widgetList<Container>(
+            find.descendant(
+              of: find.byKey(const ValueKey('status-stream')),
+              matching: find.byType(Container),
+            ),
+          )
+          .map((c) => (c.decoration as BoxDecoration?)?.color);
+      await pumpLauncher(tester, PhoneBackend());
+      expect(dots(), contains(HaloColors.flare));
+      await pumpLauncher(tester, PhoneBackend(empty: true));
+      await tester.pumpAndSettle();
+      expect(dots(), isNot(contains(HaloColors.flare)));
+    });
+
+    testWidgets('no time, date or battery text', (tester) async {
+      await pumpLauncher(tester, PhoneBackend());
+      expect(find.textContaining('09:41', findRichText: true), findsNothing);
+      expect(find.textContaining('82%', findRichText: true), findsNothing);
+    });
   });
 }
 
