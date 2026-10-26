@@ -124,6 +124,8 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   List<HaloAppInfo> get apps => _apps;
 
   Future<void> _loadApps() async {
+    // Roles first: each app's glyph comes from them.
+    await _loadRoles();
     final list = await _methods.invokeListMethod<Map>('apps') ?? const [];
     _apps = [
       for (final a in list)
@@ -132,6 +134,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           label: a['label'] as String,
           icon: _icons[a['id']],
           monoIcon: _monos[a['id']],
+          glyph: _glyphOf(a['id'] as String),
           work: a['work'] as bool? ?? false,
           privateSpace: a['privateSpace'] as bool? ?? false,
           canUninstall: a['canUninstall'] as bool? ?? true,
@@ -142,6 +145,22 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
         if (!_icons.containsKey(a.id)) a.id,
     ];
     if (missing.isNotEmpty) unawaited(_loadIcons(missing));
+  }
+
+  // Role to app id for the user's default apps (D-025): those apps are drawn
+  // with the design's glyphs.
+  Map<String, String> _roles = const {};
+
+  String? _glyphOf(String id) {
+    for (final MapEntry(key: role, value: app) in _roles.entries) {
+      if (app == id) return role;
+    }
+    return null;
+  }
+
+  Future<void> _loadRoles() async {
+    _roles =
+        await _methods.invokeMapMethod<String, String>('roles') ?? const {};
   }
 
   Future<void> _loadIcons(List<String> ids) async {

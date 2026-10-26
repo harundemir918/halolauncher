@@ -47,6 +47,7 @@ void main() {
         'isDefaultHome' => false,
         'requestDefaultHome' => null,
         'defaultApps' => defaults,
+        'roles' => {'messages': 'com.b/.Main'},
         'getPref' => prefs[(call.arguments as Map)['key']],
         'setPref' =>
           prefs[(call.arguments as Map)['key'] as String] =
@@ -318,5 +319,16 @@ void main() {
       expect(calls.last.method, 'setPrivateSpaceLocked');
       expect(calls.last.arguments, {'locked': false});
     });
+  });
+
+  test('the default app for a design role gets its glyph', () async {
+    final b = await AndroidBackend.create();
+    addTearDown(b.dispose);
+    final byId = {for (final a in b.apps) a.id: a};
+    expect(byId['com.b/.Main']!.glyph, 'messages');
+    expect(byId['com.a/.Main']!.glyph, isNull);
+    await settle();
+    // Icons keep the glyph.
+    expect(b.apps.firstWhere((a) => a.id == 'com.b/.Main').glyph, 'messages');
   });
 }

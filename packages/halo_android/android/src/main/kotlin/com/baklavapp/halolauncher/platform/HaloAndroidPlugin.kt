@@ -18,6 +18,8 @@ import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
@@ -199,7 +201,8 @@ class HaloAndroidPlugin :
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "apps" -> result.success(apps())
-            "defaultApps" -> result.success(defaultApps())
+            "defaultApps" -> result.success(roleApps().values.distinct())
+            "roles" -> result.success(roleApps())
             "getPref" -> result.success(prefs.getString(call.argument<String>("key"), null))
             "setPref" -> {
                 prefs.edit().putString(call.argument<String>("key"), call.argument<String>("value")).apply()
@@ -326,28 +329,32 @@ class HaloAndroidPlugin :
     }
 
     /**
-     * The user's default apps for the roles on the Home design's arc, in its
-     * order (Notes has no standard role): maps, music, messages, camera,
-     * browser, phone. Used to fill the arc the first time.
+     * The user's default app for each role on the Home design's arc, role to
+     * app id, in the design's order (Notes has no standard role): maps,
+     * music, messages, camera, web, phone. They fill the arc the first time
+     * and are drawn with the design's glyphs (D-025).
      */
-    private fun defaultApps(): List<String> {
+    private fun roleApps(): Map<String, String> {
         val pm = context.packageManager
         fun resolved(intent: Intent): String? =
             pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
                 ?.activityInfo?.packageName
                 ?.takeIf { it != "android" } // the chooser: no default picked
-        val packages = listOf(
-            resolved(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q="))),
-            resolved(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)),
-            Telephony.Sms.getDefaultSmsPackage(context),
-            resolved(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)),
-            resolved(Intent(Intent.ACTION_VIEW, Uri.parse("https://"))),
-            resolved(Intent(Intent.ACTION_DIAL)),
+        val packages = linkedMapOf(
+            "maps" to resolved(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q="))),
+            "music" to resolved(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC)),
+            "messages" to Telephony.Sms.getDefaultSmsPackage(context),
+            "camera" to resolved(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)),
+            "web" to resolved(Intent(Intent.ACTION_VIEW, Uri.parse("https://"))),
+            "phone" to resolved(Intent(Intent.ACTION_DIAL)),
         )
         val mine = launcherApps.getActivityList(null, me)
-        return packages.filterNotNull().distinct().mapNotNull { pkg ->
-            mine.firstOrNull { it.componentName.packageName == pkg }?.let(::idOf)
+        val out = LinkedHashMap<String, String>()
+        for ((role, pkg) in packages) {
+            if (pkg == null) continue
+            mine.firstOrNull { it.componentName.packageName == pkg }?.let { out[role] = idOf(it) }
         }
+        return out
     }
 
     private fun shortcutQuery(component: ComponentName) = LauncherApps.ShortcutQuery()
@@ -482,7 +489,11 @@ class HaloAndroidPlugin :
         }
     }
 
-    /** Each app's icon, and its monochrome layer as `mono` when it has one. */
+    /**
+     * Each app's icon, and a monochrome mask as `mono`: the icon's own
+     * monochrome layer (Android 13+) when it has one, else one derived from
+     * the icon ([derivedMono]). The arc draws every app from it (D-025).
+     */
     private fun icons(ids: List<String>, size: Int): Map<String, Map<String, ByteArray>> {
         val byId = activities().associateBy(::idOf)
         val out = HashMap<String, Map<String, ByteArray>>()
@@ -493,9 +504,14 @@ class HaloAndroidPlugin :
             } catch (e: Exception) {
                 null
             } ?: continue
-            val mono = if (Build.VERSION.SDK_INT >= 33 && drawable is AdaptiveIconDrawable) {
-                drawable.monochrome?.let { layerPng(it, size) }
+            val layer = if (Build.VERSION.SDK_INT >= 33 && drawable is AdaptiveIconDrawable) {
+                drawable.monochrome
             } else {
+                null
+            }
+            val mono = try {
+                if (layer != null) layerPng(layer, size) else derivedMono(drawable, size)
+            } catch (e: Exception) {
                 null
             }
             out[id] = buildMap {
@@ -506,13 +522,97 @@ class HaloAndroidPlugin :
         return out
     }
 
-    /** One adaptive icon layer, full bleed and cropped like [png]. */
+    /** A monochrome layer, full bleed and cropped like [png], as a clean mask. */
     private fun layerPng(layer: Drawable, size: Int): ByteArray {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val bleed = size * 18 / 72
         layer.setBounds(-bleed, -bleed, size + bleed, size + bleed)
         layer.draw(Canvas(bitmap))
-        return compress(bitmap)
+        return compress(cleanMask(bitmap))
+    }
+
+    /**
+     * White with the mask's alpha, near-invisible pixels dropped: the arc
+     * tints wherever the mask has any alpha, so a faint speck would show.
+     */
+    private fun cleanMask(bitmap: Bitmap): Bitmap {
+        val w = bitmap.width
+        val h = bitmap.height
+        val pixels = IntArray(w * h)
+        bitmap.getPixels(pixels, 0, w, 0, 0, w, h)
+        for (i in pixels.indices) {
+            val a = pixels[i] ushr 24
+            pixels[i] = if (a < MASK_FLOOR) 0 else (a shl 24) or 0xFFFFFF
+        }
+        bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
+        return bitmap
+    }
+
+    /**
+     * A monochrome mask for an icon that has no monochrome layer: the pixels
+     * that stand out from the icon's own background. For an adaptive icon
+     * that is where the full icon differs from its background layer, so a
+     * white logo on a colored plate keeps its shape and a white plate drops
+     * away. A legacy icon is compared with its edge color, or used by its
+     * alpha when the edge is transparent. The mask is shrunk to the size of
+     * a monochrome layer's content (about two thirds), like [layerPng].
+     */
+    private fun derivedMono(drawable: Drawable, size: Int): ByteArray {
+        val full = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(full)
+        var reference: IntArray? = null
+        var edge = 0
+        if (drawable is AdaptiveIconDrawable) {
+            val bleed = size * 18 / 72
+            val back = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            drawable.background?.let {
+                it.setBounds(-bleed, -bleed, size + bleed, size + bleed)
+                it.draw(Canvas(back))
+                it.draw(canvas)
+            }
+            drawable.foreground?.let {
+                it.setBounds(-bleed, -bleed, size + bleed, size + bleed)
+                it.draw(canvas)
+            }
+            reference = IntArray(size * size).also { back.getPixels(it, 0, size, 0, 0, size, size) }
+            back.recycle()
+        } else {
+            val inset = size * 15 / 100
+            drawable.setBounds(inset, inset, size - inset, size - inset)
+            drawable.draw(canvas)
+            edge = full.getPixel(inset + size / 25, size / 2)
+        }
+        val pixels = IntArray(size * size)
+        full.getPixels(pixels, 0, size, 0, 0, size, size)
+        full.recycle()
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            val a = p ushr 24
+            if (a == 0) continue
+            val against = reference?.get(i) ?: edge
+            val stand = if (reference == null && against ushr 24 < 128) 1f else distance(p, against) * 3f
+            val alpha = (a * stand.coerceIn(0f, 1f)).toInt()
+            pixels[i] = (alpha shl 24) or 0xFFFFFF
+        }
+        val mask = Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val shrink = size / 6
+        Canvas(out).drawBitmap(
+            mask,
+            null,
+            Rect(shrink, shrink, size - shrink, size - shrink),
+            Paint(Paint.FILTER_BITMAP_FLAG),
+        )
+        mask.recycle()
+        return compress(cleanMask(out))
+    }
+
+    /** RGB distance from 0 (same) to 1 (black against white). */
+    private fun distance(a: Int, b: Int): Float {
+        val dr = ((a shr 16) and 0xFF) - ((b shr 16) and 0xFF)
+        val dg = ((a shr 8) and 0xFF) - ((b shr 8) and 0xFF)
+        val db = (a and 0xFF) - (b and 0xFF)
+        return kotlin.math.sqrt((dr * dr + dg * dg + db * db).toFloat()) / 441.7f
     }
 
     private fun compress(bitmap: Bitmap): ByteArray {
@@ -579,5 +679,8 @@ class HaloAndroidPlugin :
     private companion object {
         const val REQUEST_DEFAULT_HOME = 0x4a10
         const val REQUEST_CONTACTS = 0x4a11
+
+        /** Mask alpha below this is dropped (see [cleanMask]). */
+        const val MASK_FLOOR = 40
     }
 }
