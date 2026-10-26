@@ -34,6 +34,8 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       b._loadBattery(),
       b._loadDefaultHome(),
       b._loadSettings(),
+      b._loadPrivateSpace(),
+      b._loadContactsAccess(),
     ]);
     await b._loadArc();
     b._subscription = _events.receiveBroadcastStream().listen(b._onEvent);
@@ -58,21 +60,30 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   void _onEvent(dynamic event) {
     switch ((event as Map)['type']) {
       case 'apps':
-        unawaited(_loadApps().then((_) => _notify()));
+        unawaited(
+          Future.wait([_loadApps(), _loadPrivateSpace()])
+              .then((_) => _notify()),
+        );
       case 'battery':
         unawaited(_loadBattery().then((_) => _notify()));
       case 'defaultHome':
         unawaited(_loadDefaultHome().then((_) => _notify()));
+      case 'contacts':
+        unawaited(_loadContactsAccess().then((_) => _notify()));
       case 'home':
         _home.add(null);
     }
   }
 
-  // The user may change the default home app in Settings while Halo is away.
+  // The user may change the default home app or Halo's permissions in
+  // Settings while Halo is away.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_loadDefaultHome().then((_) => _notify()));
+      unawaited(
+        Future.wait([_loadDefaultHome(), _loadContactsAccess()])
+            .then((_) => _notify()),
+      );
     }
   }
 
@@ -107,6 +118,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
 
   List<HaloAppInfo> _apps = const [];
   final _icons = <String, Uint8List>{};
+  final _monos = <String, Uint8List>{};
 
   @override
   List<HaloAppInfo> get apps => _apps;
@@ -119,7 +131,9 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           id: a['id'] as String,
           label: a['label'] as String,
           icon: _icons[a['id']],
+          monoIcon: _monos[a['id']],
           work: a['work'] as bool? ?? false,
+          privateSpace: a['privateSpace'] as bool? ?? false,
           canUninstall: a['canUninstall'] as bool? ?? true,
         ),
     ];
@@ -131,13 +145,16 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   }
 
   Future<void> _loadIcons(List<String> ids) async {
-    final icons = await _methods.invokeMapMethod<String, Uint8List>('icons', {
+    final icons = await _methods.invokeMapMethod<String, Map>('icons', {
       'ids': ids,
       'size': iconSize,
     });
     if (icons == null || icons.isEmpty) return;
-    _icons.addAll(icons);
-    _apps = [for (final a in _apps) a.withIcon(_icons[a.id])];
+    for (final MapEntry(key: id, value: i) in icons.entries) {
+      if (i['icon'] case final Uint8List icon) _icons[id] = icon;
+      if (i['mono'] case final Uint8List mono) _monos[id] = mono;
+    }
+    _apps = [for (final a in _apps) a.withIcons(_icons[a.id], _monos[a.id])];
     _notify();
   }
 
@@ -239,6 +256,64 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   @override
   Future<void> uninstall(String appId) =>
       _methods.invokeMethod<void>('uninstall', {'id': appId});
+
+  // Search sources
+
+  @override
+  List<SettingsPage> get settingsPages => defaultSettingsPages;
+
+  @override
+  Future<void> openSettingsPage(String id) =>
+      _methods.invokeMethod<void>('openSettings', {'id': id});
+
+  bool _canSearchContacts = false;
+
+  @override
+  bool get canSearchContacts => _canSearchContacts;
+
+  Future<void> _loadContactsAccess() async {
+    _canSearchContacts =
+        await _methods.invokeMethod<bool>('canSearchContacts') ?? false;
+  }
+
+  @override
+  Future<void> requestContactsAccess() =>
+      _methods.invokeMethod<void>('requestContacts');
+
+  @override
+  Future<List<ContactResult>> searchContacts(String query) async {
+    if (!_canSearchContacts || query.trim().isEmpty) return const [];
+    final list =
+        await _methods.invokeListMethod<Map>('searchContacts', {
+          'query': query,
+        }) ??
+        const [];
+    return [
+      for (final c in list)
+        ContactResult(id: c['id'] as String, name: c['name'] as String),
+    ];
+  }
+
+  @override
+  Future<void> openContact(String id) =>
+      _methods.invokeMethod<void>('openContact', {'id': id});
+
+  // Private space (Android 15+)
+
+  PrivateSpaceState _privateSpace = PrivateSpaceState.none;
+
+  @override
+  PrivateSpaceState get privateSpace => _privateSpace;
+
+  Future<void> _loadPrivateSpace() async {
+    final state = await _methods.invokeMethod<String>('privateSpace');
+    _privateSpace =
+        PrivateSpaceState.values.asNameMap()[state] ?? PrivateSpaceState.none;
+  }
+
+  @override
+  Future<void> setPrivateSpaceLocked(bool locked) =>
+      _methods.invokeMethod<void>('setPrivateSpaceLocked', {'locked': locked});
 
   // Default home app
 

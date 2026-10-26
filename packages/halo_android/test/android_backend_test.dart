@@ -19,6 +19,9 @@ void main() {
   late List<MethodCall> calls;
   late MockStreamHandlerEventSink sink;
   final icon = Uint8List.fromList([1, 2, 3]);
+  final mono = Uint8List.fromList([4, 5, 6]);
+  late bool contactsAllowed;
+  late String privateSpace;
 
   setUp(() {
     installed = [
@@ -28,13 +31,16 @@ void main() {
     ];
     prefs = {};
     defaults = ['com.b/.Main'];
+    contactsAllowed = false;
+    privateSpace = 'none';
     calls = [];
     messenger.setMockMethodCallHandler(methods, (call) async {
       calls.add(call);
       return switch (call.method) {
         'apps' => installed,
         'icons' => {
-          for (final id in (call.arguments as Map)['ids'] as List) id: icon,
+          for (final id in (call.arguments as Map)['ids'] as List)
+            id: {'icon': icon, if (id == 'com.a/.Main') 'mono': mono},
         },
         'launch' => (call.arguments as Map)['id'] == 'com.a/.Main',
         'battery' => {'level': 0.82, 'charging': false},
@@ -49,7 +55,14 @@ void main() {
           {'id': 's1', 'label': 'New message'},
         ],
         'startShortcut' => true,
-        'appInfo' || 'uninstall' => null,
+        'appInfo' || 'uninstall' || 'openSettings' || 'openContact' => null,
+        'requestContacts' => null,
+        'canSearchContacts' => contactsAllowed,
+        'searchContacts' => [
+          {'id': 'k/1', 'name': 'Mira Okafor'},
+        ],
+        'privateSpace' => privateSpace,
+        'setPrivateSpaceLocked' => null,
         _ => throw MissingPluginException(),
       };
     });
@@ -84,6 +97,9 @@ void main() {
     for (final a in b.apps) {
       expect(a.icon, icon);
     }
+    final byId = {for (final a in b.apps) a.id: a};
+    expect(byId['com.a/.Main']!.monoIcon, mono);
+    expect(byId['com.b/.Main']!.monoIcon, isNull);
     final req = calls.firstWhere((c) => c.method == 'icons');
     expect((req.arguments as Map)['size'], AndroidBackend.iconSize);
   });
@@ -237,5 +253,70 @@ void main() {
           c.method: (c.arguments as Map)['id'],
     };
     expect(sent, {'appInfo': 'com.a/.Main', 'uninstall': 'com.w/.Main#10'});
+  });
+
+  group('search sources', () {
+    test('contacts: nothing without the permission, results with it', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.canSearchContacts, isFalse);
+      expect(await b.searchContacts('mi'), isEmpty);
+      expect(calls.where((c) => c.method == 'searchContacts'), isEmpty);
+
+      contactsAllowed = true;
+      final changed = expectLater(b.changes, emits(null));
+      sink.success({'type': 'contacts'});
+      await changed;
+      expect(b.canSearchContacts, isTrue);
+      final found = await b.searchContacts('mi');
+      expect(found.single.name, 'Mira Okafor');
+      expect(found.single.initials, 'MO');
+      await b.openContact(found.single.id);
+      expect(calls.last.arguments, {'id': 'k/1'});
+    });
+
+    test('settings pages are the shared list and open by id', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.settingsPages, defaultSettingsPages);
+      await b.openSettingsPage('wifi');
+      expect(calls.last.method, 'openSettings');
+      expect(calls.last.arguments, {'id': 'wifi'});
+    });
+  });
+
+  group('private space', () {
+    test('state comes from the platform', () async {
+      privateSpace = 'locked';
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.privateSpace, PrivateSpaceState.locked);
+      privateSpace = 'unlocked';
+      installed.add({
+        'id': 'com.bank/.Main#11',
+        'label': 'Bank',
+        'privateSpace': true,
+      });
+      sink.success({'type': 'apps'});
+      await settle();
+      await settle();
+      expect(b.privateSpace, PrivateSpaceState.unlocked);
+      expect(b.apps.firstWhere((a) => a.label == 'Bank').privateSpace, isTrue);
+    });
+
+    test('an unknown answer means none', () async {
+      privateSpace = 'weird';
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.privateSpace, PrivateSpaceState.none);
+    });
+
+    test('lock and unlock go to the platform', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      await b.setPrivateSpaceLocked(false);
+      expect(calls.last.method, 'setPrivateSpaceLocked');
+      expect(calls.last.arguments, {'locked': false});
+    });
   });
 }

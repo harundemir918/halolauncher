@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Uninstall from the long-press menu; the system still asks the user. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Optional: contacts in search, asked for only from search. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Android 15: lets the default home app see the private space. -->
+    <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
 
     <!-- Package visibility (Android 11+). -->
     <queries>

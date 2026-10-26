@@ -1,6 +1,9 @@
 package com.baklavapp.halolauncher.platform
 
+import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.ContentResolver
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -19,11 +22,14 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.BatteryManager
+import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Settings
 import android.provider.Telephony
@@ -42,8 +48,9 @@ import java.util.concurrent.Executors
  *
  * Calls go over the `halo_android` method channel. Events go over
  * `halo_android/events` as `{"type": ...}` maps:
- * `apps` (installed apps changed), `home` (Home pressed), `battery`,
- * `defaultHome` (the default home app may have changed).
+ * `apps` (installed apps or a profile's lock changed), `home` (Home pressed),
+ * `battery`, `defaultHome` (the default home app may have changed),
+ * `contacts` (the contacts permission was answered).
  *
  * An app id is the short flattened component name, with `#<user serial>`
  * appended for apps in another profile (work).
@@ -54,7 +61,8 @@ class HaloAndroidPlugin :
     MethodChannel.MethodCallHandler,
     EventChannel.StreamHandler,
     PluginRegistry.NewIntentListener,
-    PluginRegistry.ActivityResultListener {
+    PluginRegistry.ActivityResultListener,
+    PluginRegistry.RequestPermissionsResultListener {
 
     private lateinit var context: Context
     private lateinit var launcherApps: LauncherApps
@@ -88,6 +96,11 @@ class HaloAndroidPlugin :
         override fun onReceive(context: Context, intent: Intent) = emit("battery")
     }
 
+    // A work profile paused or resumed, a private space locked or unlocked.
+    private val profileReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = emit("apps")
+    }
+
     // FlutterPlugin
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -111,11 +124,13 @@ class HaloAndroidPlugin :
         activity = binding
         binding.addOnNewIntentListener(this)
         binding.addActivityResultListener(this)
+        binding.addRequestPermissionsResultListener(this)
     }
 
     override fun onDetachedFromActivity() {
         activity?.removeOnNewIntentListener(this)
         activity?.removeActivityResultListener(this)
+        activity?.removeRequestPermissionsResultListener(this)
         activity = null
     }
 
@@ -137,17 +152,41 @@ class HaloAndroidPlugin :
         return true
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ): Boolean {
+        if (requestCode != REQUEST_CONTACTS) return false
+        emit("contacts")
+        return true
+    }
+
     // EventChannel
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
         sink = events
         launcherApps.registerCallback(appsCallback, main)
         context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val profiles = IntentFilter().apply {
+            addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
+            addAction(Intent.ACTION_MANAGED_PROFILE_UNAVAILABLE)
+            if (Build.VERSION.SDK_INT >= 31) {
+                addAction(Intent.ACTION_PROFILE_AVAILABLE)
+                addAction(Intent.ACTION_PROFILE_UNAVAILABLE)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 33) {
+            context.registerReceiver(profileReceiver, profiles, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(profileReceiver, profiles)
+        }
     }
 
     override fun onCancel(arguments: Any?) {
         launcherApps.unregisterCallback(appsCallback)
         context.unregisterReceiver(batteryReceiver)
+        context.unregisterReceiver(profileReceiver)
         sink = null
     }
 
@@ -176,6 +215,31 @@ class HaloAndroidPlugin :
             }
             "uninstall" -> {
                 uninstall(call.argument<String>("id"))
+                result.success(null)
+            }
+            "openSettings" -> {
+                openSettings(call.argument<String>("id"))
+                result.success(null)
+            }
+            "canSearchContacts" -> result.success(canSearchContacts())
+            "requestContacts" -> {
+                requestContacts()
+                result.success(null)
+            }
+            "searchContacts" -> {
+                val query = call.argument<String>("query").orEmpty()
+                worker.execute {
+                    val found = searchContacts(query)
+                    main.post { result.success(found) }
+                }
+            }
+            "openContact" -> {
+                openContact(call.argument<String>("id"))
+                result.success(null)
+            }
+            "privateSpace" -> result.success(privateSpaceState())
+            "setPrivateSpaceLocked" -> {
+                setPrivateSpaceLocked(call.argument<Boolean>("locked") ?: true)
                 result.success(null)
             }
             "icons" -> {
@@ -211,14 +275,41 @@ class HaloAndroidPlugin :
         return user?.let { component to it }
     }
 
-    /** Launchable activities in every profile, minus Halo itself. */
-    private fun activities(): List<LauncherActivityInfo> =
-        launcherApps.profiles.flatMap { launcherApps.getActivityList(null, it) }
+    /** The private space profile (Android 15+), if there is one. */
+    private fun privateProfile(): UserHandle? {
+        if (Build.VERSION.SDK_INT < 35) return null
+        return launcherApps.profiles.firstOrNull {
+            launcherApps.getLauncherUserInfo(it)?.userType == UserManager.USER_TYPE_PROFILE_PRIVATE
+        }
+    }
+
+    private fun privateSpaceState(): String {
+        val profile = privateProfile() ?: return "none"
+        return if (users.isQuietModeEnabled(profile)) "locked" else "unlocked"
+    }
+
+    /** The system asks for the private space's lock when unlocking. */
+    private fun setPrivateSpaceLocked(locked: Boolean) {
+        val profile = privateProfile() ?: return
+        users.requestQuietModeEnabled(locked, profile)
+    }
+
+    /**
+     * Launchable activities in every profile, minus Halo itself. A locked
+     * private space shows nothing: its apps must not appear while locked.
+     */
+    private fun activities(): List<LauncherActivityInfo> {
+        val hidden = privateProfile()?.takeIf(users::isQuietModeEnabled)
+        return launcherApps.profiles
+            .filter { it != hidden }
+            .flatMap { launcherApps.getActivityList(null, it) }
             .filter { it.componentName.packageName != context.packageName }
+    }
 
     /** Every launchable app, by label. */
-    private fun apps(): List<Map<String, Any>> =
-        activities()
+    private fun apps(): List<Map<String, Any>> {
+        val private = privateProfile()
+        return activities()
             .map {
                 val flags = it.applicationInfo.flags
                 val system = flags and ApplicationInfo.FLAG_SYSTEM != 0 &&
@@ -226,11 +317,13 @@ class HaloAndroidPlugin :
                 mapOf(
                     "id" to idOf(it),
                     "label" to it.label.toString(),
-                    "work" to (it.user != me),
+                    "work" to (it.user != me && it.user != private),
+                    "privateSpace" to (it.user == private),
                     "canUninstall" to !system,
                 )
             }
             .sortedBy { (it["label"] as String).lowercase() }
+    }
 
     /**
      * The user's default apps for the roles on the Home design's arc, in its
@@ -302,9 +395,97 @@ class HaloAndroidPlugin :
         host.startActivity(Intent(Intent.ACTION_DELETE, Uri.fromParts("package", component.packageName, null)))
     }
 
-    private fun icons(ids: List<String>, size: Int): Map<String, ByteArray> {
+    private fun openSettings(id: String?) {
+        val action = when (id) {
+            "wifi" -> Settings.ACTION_WIFI_SETTINGS
+            "bluetooth" -> Settings.ACTION_BLUETOOTH_SETTINGS
+            "network" -> Settings.ACTION_WIRELESS_SETTINGS
+            "airplane" -> Settings.ACTION_AIRPLANE_MODE_SETTINGS
+            "display" -> Settings.ACTION_DISPLAY_SETTINGS
+            "sound" -> Settings.ACTION_SOUND_SETTINGS
+            "notifications" -> "android.settings.NOTIFICATION_SETTINGS"
+            "battery" -> Intent.ACTION_POWER_USAGE_SUMMARY
+            "apps" -> Settings.ACTION_APPLICATION_SETTINGS
+            "location" -> Settings.ACTION_LOCATION_SOURCE_SETTINGS
+            "security" -> Settings.ACTION_SECURITY_SETTINGS
+            "privacy" -> Settings.ACTION_PRIVACY_SETTINGS
+            "storage" -> Settings.ACTION_INTERNAL_STORAGE_SETTINGS
+            "accessibility" -> Settings.ACTION_ACCESSIBILITY_SETTINGS
+            "datetime" -> Settings.ACTION_DATE_SETTINGS
+            "language" -> Settings.ACTION_LOCALE_SETTINGS
+            "home" -> Settings.ACTION_HOME_SETTINGS
+            "about" -> Settings.ACTION_DEVICE_INFO_SETTINGS
+            else -> Settings.ACTION_SETTINGS
+        }
+        // Not every phone has every page; fall back to Settings itself.
+        for (a in listOf(action, Settings.ACTION_SETTINGS)) {
+            try {
+                context.startActivity(Intent(a).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (e: ActivityNotFoundException) {
+                continue
+            }
+        }
+    }
+
+    private fun canSearchContacts(): Boolean =
+        context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Asks for the contacts permission. Once the user has said no for good,
+     * Android shows no dialog any more, so open Halo's App info instead.
+     */
+    private fun requestContacts() {
+        val host: Activity = activity?.activity ?: return
+        val askedBefore = prefs.getBoolean("askedContacts", false)
+        if (askedBefore && !host.shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS)) {
+            host.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+            )
+            return
+        }
+        prefs.edit().putBoolean("askedContacts", true).apply()
+        host.requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), REQUEST_CONTACTS)
+    }
+
+    /** At most five contacts whose name matches, as the system's filter ranks them. */
+    private fun searchContacts(query: String): List<Map<String, String>> {
+        if (query.isBlank() || !canSearchContacts()) return emptyList()
+        val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_FILTER_URI, Uri.encode(query.trim()))
+        val projection = arrayOf(
+            ContactsContract.Contacts._ID,
+            ContactsContract.Contacts.LOOKUP_KEY,
+            ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+        )
+        val args = Bundle().apply { putInt(ContentResolver.QUERY_ARG_LIMIT, 5) }
+        return try {
+            context.contentResolver.query(uri, projection, args, null)?.use { c ->
+                buildList {
+                    while (c.moveToNext()) {
+                        val name = c.getString(2) ?: continue
+                        add(mapOf("id" to "${c.getString(1)}/${c.getLong(0)}", "name" to name))
+                    }
+                }
+            }.orEmpty()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun openContact(id: String?) {
+        val (lookup, rowId) = id?.split('/', limit = 2)?.takeIf { it.size == 2 } ?: return
+        val uri = ContactsContract.Contacts.getLookupUri(rowId.toLongOrNull() ?: return, lookup) ?: return
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            // No contacts app.
+        }
+    }
+
+    /** Each app's icon, and its monochrome layer as `mono` when it has one. */
+    private fun icons(ids: List<String>, size: Int): Map<String, Map<String, ByteArray>> {
         val byId = activities().associateBy(::idOf)
-        val out = HashMap<String, ByteArray>()
+        val out = HashMap<String, Map<String, ByteArray>>()
         for (id in ids) {
             val info = byId[id] ?: continue
             val drawable = try {
@@ -312,9 +493,33 @@ class HaloAndroidPlugin :
             } catch (e: Exception) {
                 null
             } ?: continue
-            out[id] = png(drawable, size)
+            val mono = if (Build.VERSION.SDK_INT >= 33 && drawable is AdaptiveIconDrawable) {
+                drawable.monochrome?.let { layerPng(it, size) }
+            } else {
+                null
+            }
+            out[id] = buildMap {
+                put("icon", png(drawable, size))
+                if (mono != null) put("mono", mono)
+            }
         }
         return out
+    }
+
+    /** One adaptive icon layer, full bleed and cropped like [png]. */
+    private fun layerPng(layer: Drawable, size: Int): ByteArray {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val bleed = size * 18 / 72
+        layer.setBounds(-bleed, -bleed, size + bleed, size + bleed)
+        layer.draw(Canvas(bitmap))
+        return compress(bitmap)
+    }
+
+    private fun compress(bitmap: Bitmap): ByteArray {
+        val bytes = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes)
+        bitmap.recycle()
+        return bytes.toByteArray()
     }
 
     /**
@@ -337,10 +542,7 @@ class HaloAndroidPlugin :
             drawable.setBounds(inset, inset, size - inset, size - inset)
             drawable.draw(canvas)
         }
-        val bytes = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes)
-        bitmap.recycle()
-        return bytes.toByteArray()
+        return compress(bitmap)
     }
 
     private fun launch(id: String?): Boolean {
@@ -376,5 +578,6 @@ class HaloAndroidPlugin :
 
     private companion object {
         const val REQUEST_DEFAULT_HOME = 0x4a10
+        const val REQUEST_CONTACTS = 0x4a11
     }
 }
