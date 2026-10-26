@@ -160,4 +160,29 @@ void main() {
     );
     expect(find.bySemanticsLabel('Play'), findsOneWidget);
   });
+
+  testWidgets('a long source ellipsizes and keeps the time', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: HaloTheme.dark(),
+        home: const Scaffold(
+          body: SizedBox(
+            width: 342,
+            child: HaloTimelineItem(
+              mark: HaloMark.read,
+              source:
+                  'Google Play services · Action required: Theft protection '
+                  'is on, tap to finish setup',
+              time: '22:38',
+              body: 'Theft protection is on.',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('22:38'), findsOneWidget);
+    final source = tester.widget<Text>(find.textContaining('GOOGLE PLAY'));
+    expect(source.overflow, TextOverflow.ellipsis);
+  });
 }

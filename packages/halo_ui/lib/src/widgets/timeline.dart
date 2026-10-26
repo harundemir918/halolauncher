@@ -169,13 +169,19 @@ class HaloTimelineItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // A long source (an app and a long title) ellipsizes; the
+                    // time always shows.
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          HaloType.upper(source),
-                          style: HaloType.status.copyWith(color: halo.text),
+                        Expanded(
+                          child: Text(
+                            HaloType.upper(source),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: HaloType.status.copyWith(color: halo.text),
+                          ),
                         ),
+                        const SizedBox(width: 12),
                         Text(
                           HaloType.upper(time),
                           style: HaloType.status.copyWith(color: halo.muted),
