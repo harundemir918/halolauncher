@@ -1,0 +1,21 @@
+name: halo_ui_gallery
+description: "Token gallery for halo_ui. A throwaway preview, not the shell."
+publish_to: 'none'
+version: 0.0.1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  halo_ui:
+    path: ..
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: false

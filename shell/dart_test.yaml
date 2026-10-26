@@ -1,0 +1,4 @@
+tags:
+  golden:
+    # Goldens are rendered on macOS. Run `flutter test --update-goldens` after a
+    # deliberate visual change and review the image diff.

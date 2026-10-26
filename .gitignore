@@ -1,0 +1,6 @@
+.DS_Store
+out/
+.cache/
+target/
+.dart_tool/
+build/**/*.o

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Halo Design Language</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1280px; height: 520px; box-sizing: border-box; padding: 44px 48px; font-family: 'Bricolage Grotesque', system-ui, sans-serif; color: #f2f0e8; background: #0c0c0b; display: flex; flex-direction: column; gap: 30px">
+
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<div style="font-size: 40px; font-weight: 800; letter-spacing: -0.045em">Halo design language</div>
+<div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.1em; color: #a09e94">NO GRID · NO GLASS · NO DOCK</div>
+</div>
+
+<div style="display: flex; gap: 40px; flex: 1; min-height: 0">
+
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 8px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; color: #d6ff3f"><span style="width: 8px; height: 8px; background: #d6ff3f"></span>COLOR</div>
+<div style="display: flex; align-items: center; gap: 14px"><div style="width: 44px; height: 44px; background: #0c0c0b; border: 1px solid rgba(255,255,255,0.25); border-radius: 18px 4px 4px 4px"></div><div><div style="font-size: 16px; font-weight: 700">Carbon</div><div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">#0C0C0B · ground</div></div></div>
+<div style="display: flex; align-items: center; gap: 14px"><div style="width: 44px; height: 44px; background: #181816; border: 1px solid rgba(255,255,255,0.15); border-radius: 18px 4px 4px 4px"></div><div><div style="font-size: 16px; font-weight: 700">Surface</div><div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">#181816 · solid cards</div></div></div>
+<div style="display: flex; align-items: center; gap: 14px"><div style="width: 44px; height: 44px; background: #f2f0e8; border-radius: 18px 4px 4px 4px"></div><div><div style="font-size: 16px; font-weight: 700">Bone</div><div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">#F2F0E8 · text</div></div></div>
+<div style="display: flex; align-items: center; gap: 14px"><div style="width: 44px; height: 44px; background: #d6ff3f; border-radius: 18px 4px 4px 4px"></div><div><div style="font-size: 16px; font-weight: 700">Volt</div><div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">#D6FF3F · signal, on</div></div></div>
+<div style="display: flex; align-items: center; gap: 14px"><div style="width: 44px; height: 44px; background: #ff5b2e; border-radius: 18px 4px 4px 4px"></div><div><div style="font-size: 16px; font-weight: 700">Flare</div><div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">#FF5B2E · unread, alert</div></div></div>
+</div>
+
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 8px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; color: #d6ff3f"><span style="width: 8px; height: 8px; background: #d6ff3f"></span>TYPE</div>
+<div style="display: flex; align-items: baseline; gap: 14px"><span style="font-size: 92px; font-weight: 800; letter-spacing: -0.06em; line-height: 1">Aa</span><span style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 13px; color: #a09e94">0123</span></div>
+<div style="font-size: 14px; line-height: 1.5; color: #a09e94">Bricolage Grotesque speaks. DM Mono labels, counts and times.</div>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 2px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px"><span style="font-size: 34px; font-weight: 800; letter-spacing: -0.045em; line-height: 1">Headline</span><span style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">800</span></div>
+<div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px"><span style="font-size: 16px; font-weight: 500">Body copy reads plainly</span><span style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">500</span></div>
+<div style="display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px"><span style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.12em">ROOM 3 · 10:00</span><span style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; color: #a09e94">MONO</span></div>
+</div>
+</div>
+
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 8px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; color: #d6ff3f"><span style="width: 8px; height: 8px; background: #d6ff3f"></span>SHAPE</div>
+<div style="display: flex; gap: 4px; height: 84px">
+<div style="width: 84px; display: flex; align-items: center; justify-content: center; background: #d6ff3f; color: #0c0c0b; border-radius: 34px 6px 6px 6px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500">10:00</div>
+<div style="flex: 1; box-sizing: border-box; padding: 12px 14px; background: #181816; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px"><div style="font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; color: #a09e94; letter-spacing: 0.08em">NEXT</div><div style="font-size: 16px; font-weight: 700; margin-top: 3px">Design review</div></div>
+</div>
+<div style="font-size: 14px; line-height: 1.5; color: #a09e94">One big corner, three small. The notch marks the start of every block.</div>
+<div style="display: flex; align-items: center; gap: 16px; margin-top: 2px">
+<span style="display: inline-block; position: relative; width: 44px; height: 24px; border-radius: 4px; background: #d6ff3f"><span style="position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; border-radius: 2px; background: #0c0c0b"></span></span>
+<span style="display: inline-block; position: relative; width: 44px; height: 24px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.35); border-radius: 4px"><span style="position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 2px; background: #a09e94"></span></span>
+<svg width="52" height="52" viewBox="0 0 52 52" fill="none" role="img" aria-label="Ring dial"><circle cx="26" cy="26" r="21" stroke="rgba(255,255,255,0.12)" stroke-width="6"/><circle cx="26" cy="26" r="21" stroke="#d6ff3f" stroke-width="6" stroke-dasharray="84 132" transform="rotate(-90 26 26)"/></svg>
+</div>
+<div style="font-size: 14px; line-height: 1.5; color: #a09e94">Square-knob switches, ring dials and slats. Circles are for apps only.</div>
+</div>
+
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 8px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.14em; color: #d6ff3f"><span style="width: 8px; height: 8px; background: #d6ff3f"></span>RULES</div>
+<div style="display: flex; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1)"><span style="width: 22px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; color: #d6ff3f">01</span><div><div style="font-size: 19px; font-weight: 700; letter-spacing: -0.02em">Arc, not grid</div><div style="font-size: 14px; color: #a09e94; margin-top: 2px; line-height: 1.4">Apps sit in thumb reach. The top is for what matters now.</div></div></div>
+<div style="display: flex; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1)"><span style="width: 22px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; color: #d6ff3f">02</span><div><div style="font-size: 19px; font-weight: 700; letter-spacing: -0.02em">Stream, not stack</div><div style="font-size: 14px; color: #a09e94; margin-top: 2px; line-height: 1.4">Time is the spine. Halo summarizes, you decide.</div></div></div>
+<div style="display: flex; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1)"><span style="width: 22px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; color: #d6ff3f">03</span><div><div style="font-size: 19px; font-weight: 700; letter-spacing: -0.02em">Controls look like controls</div><div style="font-size: 14px; color: #a09e94; margin-top: 2px; line-height: 1.4">Switches, dials and slats, never a grid of tiles.</div></div></div>
+<div style="display: flex; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1)"><span style="width: 22px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; color: #d6ff3f">04</span><div><div style="font-size: 19px; font-weight: 700; letter-spacing: -0.02em">Solid, with one signal</div><div style="font-size: 14px; color: #a09e94; margin-top: 2px; line-height: 1.4">No blur. Volt means on, active or yours.</div></div></div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":520}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  dart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: flutter
+        run: echo "version=$(cat .flutter-version)" >> "$GITHUB_OUTPUT"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.flutter.outputs.version }}
+          channel: stable
+      - name: halo_ui
+        working-directory: packages/halo_ui
+        run: |
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test
+      - name: halo_ui gallery
+        working-directory: packages/halo_ui/example
+        run: flutter analyze
+      - name: halo_sdk
+        working-directory: packages/halo_sdk
+        run: |
+          # Unlike `flutter analyze`, `dart analyze` does not fetch dependencies.
+          dart pub get
+          dart format --output=none --set-exit-if-changed .
+          dart analyze
+          dart test
+      # Goldens are rendered on macOS, so CI skips the `golden` tag for now.
+      - name: shell
+        working-directory: shell
+        run: |
+          dart format --output=none --set-exit-if-changed .
+          flutter analyze
+          flutter test --exclude-tags golden
