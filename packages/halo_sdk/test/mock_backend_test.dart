@@ -139,6 +139,40 @@ void main() {
     });
   });
 
+  group('notification actions', () {
+    test('reply goes through for messages that can be replied to', () async {
+      final b = MockBackend();
+      expect(await b.replyToNotification('elif-1', 'Yes'), isTrue);
+      expect(b.replies, [('elif-1', 'Yes')]);
+      expect(await b.replyToNotification('nope', 'x'), isFalse);
+    });
+
+    test('dismiss and snooze remove it and notify', () async {
+      final b = MockBackend();
+      final before = b.notifications.length;
+      final changed = expectLater(b.changes, emits(null));
+      await b.dismissNotification('elif-1');
+      await changed;
+      await b.snoozeNotification('parcel-1');
+      expect(b.notifications, hasLength(before - 2));
+      expect(b.snoozed, ['parcel-1']);
+    });
+
+    test('open, access and seen are recorded', () async {
+      final b = MockBackend();
+      await b.openNotification('elif-1');
+      await b.requestNotificationAccess();
+      await b.requestCalendarAccess();
+      b.markNotificationsSeen();
+      expect(b.openedNotifications, ['elif-1']);
+      expect(
+        (b.notificationAccessRequests, b.calendarRequests, b.seenMarks),
+        (1, 1, 1),
+      );
+      expect((b.canReadNotifications, b.canReadCalendar), (true, true));
+    });
+  });
+
   test('Elif has an action prompt', () {
     expect(backend.notifications.first.actionPrompt, 'Still on for 7?');
     expect(backend.notifications.last.actionPrompt, isNull);

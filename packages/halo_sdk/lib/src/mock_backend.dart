@@ -3,6 +3,7 @@ import 'dart:async';
 import 'app_search.dart';
 import 'backend.dart';
 import 'models.dart';
+import 'rules.dart';
 import 'settings_pages.dart';
 
 /// Fixtures that reuse the copy from the designs (design/screens/) so golden
@@ -147,12 +148,16 @@ class MockBackend implements HaloBackend {
   ];
 
   @override
-  CalendarEvent? get nextEvent {
-    for (final e in agenda) {
-      if (!e.start.isBefore(now)) return e;
-    }
-    return null;
-  }
+  CalendarEvent? get nextEvent => nextEventIn(agenda, now);
+
+  @override
+  bool get canReadCalendar => true;
+
+  /// How often the mock was asked for the calendar permission.
+  var calendarRequests = 0;
+
+  @override
+  Future<void> requestCalendarAccess() async => calendarRequests++;
 
   @override
   Future<bool> launch(String id) async => false;
@@ -364,7 +369,58 @@ class MockBackend implements HaloBackend {
   ];
 
   @override
-  List<HaloNotification> get notifications => _notifications;
+  List<HaloNotification> get notifications => List.unmodifiable(_notifications);
+
+  @override
+  bool get canReadNotifications => true;
+
+  /// How often the mock was asked to open notification access.
+  var notificationAccessRequests = 0;
+
+  @override
+  Future<void> requestNotificationAccess() async =>
+      notificationAccessRequests++;
+
+  /// Notification ids the mock was asked to open, in order.
+  final openedNotifications = <String>[];
+
+  /// Replies the mock was asked to send, as (id, text).
+  final replies = <(String, String)>[];
+
+  /// Notification ids the mock snoozed, in order.
+  final snoozed = <String>[];
+
+  /// How often the mock was told the Stream was seen. It keeps the design's
+  /// fixtures as they are.
+  var seenMarks = 0;
+
+  @override
+  Future<void> openNotification(String id) async => openedNotifications.add(id);
+
+  @override
+  Future<void> dismissNotification(String id) async {
+    if (_notifications.any((n) => n.id == id)) {
+      _notifications.removeWhere((n) => n.id == id);
+      _changes.add(null);
+    }
+  }
+
+  @override
+  Future<bool> replyToNotification(String id, String text) async {
+    final n = _notifications.where((n) => n.id == id).firstOrNull;
+    if (n == null || !n.canReply) return false;
+    replies.add((id, text));
+    return true;
+  }
+
+  @override
+  Future<void> snoozeNotification(String id) async {
+    snoozed.add(id);
+    await dismissNotification(id);
+  }
+
+  @override
+  void markNotificationsSeen() => seenMarks++;
 
   @override
   List<HaloNotification> get lockPreviews => [

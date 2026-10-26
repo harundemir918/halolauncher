@@ -33,8 +33,14 @@ abstract interface class HaloBackend {
   /// Sets the text size from 0 to 1.
   void setTextSize(double value);
 
-  /// Today's events in time order.
+  /// Today's events in time order. Empty without calendar access.
   List<CalendarEvent> get agenda;
+
+  /// Whether Halo may read the calendar (an optional permission).
+  bool get canReadCalendar;
+
+  /// Asks for the calendar permission. [changes] fires once it is answered.
+  Future<void> requestCalendarAccess();
 
   /// The next calendar event today, if any.
   CalendarEvent? get nextEvent;
@@ -115,6 +121,30 @@ abstract interface class HaloBackend {
 
   /// Notifications in Stream order: what is in play now first, then earlier.
   List<HaloNotification> get notifications;
+
+  /// Whether Halo may read the notifications (a special access the user
+  /// grants in system settings).
+  bool get canReadNotifications;
+
+  /// Opens the system screen where the user grants notification access.
+  Future<void> requestNotificationAccess();
+
+  /// Opens what the notification points to, as tapping it would.
+  Future<void> openNotification(String id);
+
+  /// Clears the notification from the phone, not just from Halo.
+  Future<void> dismissNotification(String id);
+
+  /// Sends [text] through the notification's reply action. False when it has
+  /// none or the app refused it.
+  Future<bool> replyToNotification(String id, String text);
+
+  /// Puts the notification away for an hour (Stream's LATER).
+  Future<void> snoozeNotification(String id);
+
+  /// Everything shown so far counts as seen: it moves from NOW to EARLIER.
+  /// Called when the user leaves Stream.
+  void markNotificationsSeen();
 
   /// The previews Lock shows, at most two.
   List<HaloNotification> get lockPreviews;

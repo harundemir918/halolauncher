@@ -66,6 +66,7 @@ class HaloNotification {
     this.mark = StreamMark.read,
     this.preview,
     this.canReply = false,
+    this.canDismiss = true,
     this.actionPrompt,
   });
 
@@ -91,6 +92,9 @@ class HaloNotification {
 
   /// Whether the Stream offers REPLY and LATER.
   final bool canReply;
+
+  /// Whether it can be swiped away (ongoing ones can't).
+  final bool canDismiss;
 
   /// Short question Halo offers to answer from Home (`Still on for 7?`).
   final String? actionPrompt;
