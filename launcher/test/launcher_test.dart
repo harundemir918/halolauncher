@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -269,6 +271,47 @@ void main() {
     await pumpLauncher(tester, PhoneBackend());
     expect(find.text('TODAY'), findsOneWidget);
   });
+
+  testWidgets('the arc: role apps get the design glyph, the rest their mask', (
+    tester,
+  ) async {
+    await pumpLauncher(tester, IconBackend());
+    final role = find.descendant(
+      of: find.byKey(const ValueKey('arc-messages')),
+      matching: find.byType(HaloIcon),
+    );
+    expect(role, findsOneWidget);
+    expect(tester.widget<HaloIcon>(role).icon, HaloIcons.messages);
+    final other = find.descendant(
+      of: find.byKey(const ValueKey('arc-music')),
+      matching: find.byKey(const ValueKey('mono')),
+    );
+    expect(other, findsOneWidget);
+  });
+}
+
+/// Apps with icons and masks, Messages being the default messages app.
+class IconBackend extends PhoneBackend {
+  static final _png = Uint8List.fromList(const [
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, //
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+    0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+    0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+  ]);
+
+  @override
+  List<HaloAppInfo> get arcApps => [
+    for (final a in super.arcApps)
+      HaloAppInfo(
+        id: a.id,
+        label: a.label,
+        icon: _png,
+        monoIcon: _png,
+        glyph: a.id == 'messages' ? 'messages' : null,
+      ),
+  ];
 }
 
 /// An arc that is empty at first, as right after an install.

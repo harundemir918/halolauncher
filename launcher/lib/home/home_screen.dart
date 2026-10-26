@@ -75,8 +75,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     id: a.id,
                     label: a.label,
                     icon: iconFor(a),
-                    image: imageFor(a),
-                    monoImage: monoImageFor(a),
+                    // The user's default apps are drawn with the design's
+                    // glyphs; the rest with their monochrome icons (D-025).
+                    image: a.glyph == null ? imageFor(a) : null,
+                    monoImage: a.glyph == null ? monoImageFor(a) : null,
                     unread: unreadApps.contains(a.id),
                   ),
               ],
