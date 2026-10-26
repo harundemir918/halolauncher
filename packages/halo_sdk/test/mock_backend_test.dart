@@ -51,6 +51,13 @@ void main() {
     expect(ids[ids.length ~/ 2], 'messages');
   });
 
+  test('the mock cannot start apps and is already the default home', () async {
+    final b = MockBackend();
+    expect(await b.launch('messages'), isFalse);
+    expect(b.isDefaultHome, isTrue);
+    expect(b.apps.every((a) => a.icon == null), isTrue);
+  });
+
   test('Elif has an action prompt', () {
     expect(backend.notifications.first.actionPrompt, 'Still on for 7?');
     expect(backend.notifications.last.actionPrompt, isNull);

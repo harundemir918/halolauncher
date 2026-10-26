@@ -1,4 +1,4 @@
-/// Halo OS service API. The shell and apps reach services only through this.
+/// Halo service API. The launcher reaches the platform only through this.
 library;
 
 export 'src/backend.dart';

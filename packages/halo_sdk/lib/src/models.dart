@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Battery and connectivity for the status row.
 class DeviceStatus {
   const DeviceStatus({
@@ -104,11 +106,16 @@ class HaloNotification {
 
 /// An installed app, in arc order.
 class HaloAppInfo {
-  const HaloAppInfo({required this.id, required this.label});
+  const HaloAppInfo({required this.id, required this.label, this.icon});
 
-  /// Stable id (`messages`).
+  /// Stable id: `messages` in the mock, the flattened component name
+  /// (`com.example/.MainActivity`) on Android.
   final String id;
   final String label;
+
+  /// The app's own icon as PNG bytes, when the platform has one. Without it
+  /// the launcher draws a Halo glyph.
+  final Uint8List? icon;
 }
 
 /// A quick toggle on the Switchboard (Wi-Fi, Bluetooth, ...).

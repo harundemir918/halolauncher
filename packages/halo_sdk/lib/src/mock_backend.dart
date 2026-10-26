@@ -17,6 +17,9 @@ class MockBackend implements HaloBackend {
   Stream<void> get changes => _changes.stream;
 
   @override
+  Stream<void> get homePressed => const Stream.empty();
+
+  @override
   DeviceStatus get status =>
       const DeviceStatus(battery: 0.82, network: '5G · WI-FI', fullBy: '10:20');
 
@@ -148,6 +151,15 @@ class MockBackend implements HaloBackend {
     }
     return null;
   }
+
+  @override
+  Future<bool> launch(String id) async => false;
+
+  @override
+  bool get isDefaultHome => true;
+
+  @override
+  Future<void> requestDefaultHome() async {}
 
   late final List<HaloAppInfo> _recents = [
     for (final id in const ['messages', 'music', 'maps', 'notes', 'web'])

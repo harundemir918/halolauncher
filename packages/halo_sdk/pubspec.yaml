@@ -1,5 +1,5 @@
 name: halo_sdk
-description: Halo OS service API for the shell and apps, with a mock backend.
+description: Halo service API for the launcher, with a mock backend.
 version: 0.0.1
 publish_to: none
 

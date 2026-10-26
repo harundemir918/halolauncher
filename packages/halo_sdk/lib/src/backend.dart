@@ -1,8 +1,8 @@
 import 'models.dart';
 
-/// What the shell can ask the system. Phase 4 adds a real implementation over
-/// halo-bus; until then [MockBackend] serves fixtures. The getters are
-/// snapshots for now; reactive streams arrive with the real backend.
+/// What the launcher can ask the platform. [MockBackend] serves the design
+/// fixtures; `AndroidBackend` in `packages/halo_android` serves the phone. The
+/// getters are snapshots, and [changes] says when to read them again.
 abstract interface class HaloBackend {
   /// Current local time.
   DateTime get now;
@@ -41,6 +41,20 @@ abstract interface class HaloBackend {
 
   /// Installed apps in arc order, left to right.
   List<HaloAppInfo> get apps;
+
+  /// Starts an app. False when this backend can't start apps (the mock), so
+  /// the launcher shows a stand-in instead.
+  Future<bool> launch(String id);
+
+  /// Whether Halo is the default home app.
+  bool get isDefaultHome;
+
+  /// Asks the platform to make Halo the default home app.
+  Future<void> requestDefaultHome();
+
+  /// Emits when the user presses Home while Halo is already showing, or comes
+  /// back to it with Home. Broadcast.
+  Stream<void> get homePressed;
 
   /// Apps in Recents, left to right.
   List<HaloAppInfo> get recents;
