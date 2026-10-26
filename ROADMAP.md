@@ -65,14 +65,17 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 ## Phase 3c: Status row ☑
 - ☑ Halo's status row no longer repeats Android's time, date and battery: `STREAM` (with a Flare dot while something is unread) and `SWITCHBOARD`, each opening its screen; the battery line stays (D-024)
 
-## Phase 4: Calendar and notifications
-- ☐ Calendar via `CalendarContract` (`READ_CALENDAR`): Home "NOW", the `TODAY` agenda and the next-event card
-- ☐ `NotificationListenerService` with an onboarding flow for the special access grant
-- ☐ Stream: the timeline in `NOW` / `EARLIER`, unread (Flare), open, dismiss, inline reply and notification actions
-- ☐ The Home action card for the top message, wired to the notification's reply action
-- ☐ Media sessions (from the listener) for the Switchboard media strip
+## Phase 4: Calendar and notifications ◐
+- ☑ Calendar via `CalendarContract` (`READ_CALENDAR`, asked for from Home's TODAY): Home "NOW", the `TODAY` agenda and the next event, live when the calendar changes. All-day events ☐ (left out for now)
+- ☑ `NotificationListenerService` with an onboarding screen in Stream for the special access grant ("Nothing leaves this phone")
+- ◐ Stream: the timeline in `NOW` / `EARLIER` with unread (since Stream was last left), the current message (Volt) and alerts (Flare); tap to open, swipe to dismiss on the phone, inline REPLY, LATER snoozes for an hour (D-028) ☑. Other notification actions (Mark as read, Archive…) ☐
+- ☑ The Home action card for the newest unread message: Reply opens it in Stream with the reply field ready; Later snoozes it
+- ◐ Media sessions (from the listener) for the Switchboard media strip, with play/pause: built and unit tested ☑, checked on a device ☐
+- ☐ "Navigate" and "Open notes" under Home's NOW do something (maps to the event's location; notes is open)
 
 **Exit:** Stream shows the phone's real notifications, a reply sent from Stream or Home reaches the sender, and dismissing in Halo dismisses on Android.
+
+*Status (2026-10-26):* the exit holds on a Pixel 10 Pro emulator (Android 17): a real SMS showed in Stream and on Home's card, a reply typed in Stream (opened from the card) went out as an SMS to the sender, a swipe cleared it from the phone's notifications, LATER snoozed one, a tap opened Messages, and a calendar event showed on Home the moment it was added. Not yet checked on the Galaxy S20 FE. One crash of Halo's process inside Android's process start (framework frames only, around a reinstall) was seen once and not reproduced.
 
 ## Phase 5: Switchboard and System
 - ☐ Brightness dial (`WRITE_SETTINGS` grant, auto-brightness toggle)
@@ -120,4 +123,5 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - **Apps view (D-026):** built as a list reached by an up swipe on the arc. Still open: the gesture, how much Volt the list carries, and drag-to-reorder on the arc.
 - **Min SDK (D-018):** proposed Android 10 (API 29); the code uses 29.
 - **Motion spec:** none exists. DESIGN_SYSTEM §8 has interim rules.
+- **Notification actions beyond reply:** which ones Stream should show (Mark as read, Archive, Call back), and how without crowding the design.
 - **Ask Halo commands:** which commands to support first (Phase 7, D-027).

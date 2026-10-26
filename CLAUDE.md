@@ -8,7 +8,7 @@ Guide for AI agents and contributors working in this repository.
 
 The project began as Halo OS, a mobile OS on the Linux kernel. The owner has moved it to a launcher. What carries over: the designs in `design/`, the design system `packages/halo_ui`, the service interface and mock backend `packages/halo_sdk`, and the six screens (now in `launcher/`). The kernel, init, compositor and embedder work does not carry over.
 
-Current status: **pre-alpha.** On Android (Phase 3 done), Halo is a working home app: the arc you choose, the Apps list with search across apps, contacts and settings, a long-press menu, work profile and private space. Calendar, notifications, Switchboard and Recents are empty there until Phases 4 to 6. All six screens run on macOS against mock data. Check [ROADMAP.md](ROADMAP.md) for the active phase before starting work, and tick off items (☐ → ◐ → ☑) as you complete them.
+Current status: **pre-alpha.** On Android (Phase 3 done), Halo is a working home app: the arc you choose, the Apps list with search across apps, contacts and settings, a long-press menu, work profile and private space. Phase 4 brings today's calendar to Home, the phone's notifications to Stream (open, swipe away, reply, snooze) and the playing media to Switchboard. Switchboard's dials and toggles and Recents follow in Phases 5 and 6. All six screens run on macOS against mock data. Check [ROADMAP.md](ROADMAP.md) for the active phase before starting work, and tick off items (☐ → ◐ → ☑) as you complete them.
 
 ## Read first
 

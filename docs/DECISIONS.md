@@ -126,3 +126,13 @@ The designs show the button under the arc but not what it does. Owner approved:
 - **Long press:** opens the assistant the user picked in Android (`ACTION_ASSIST`, else `ACTION_VOICE_COMMAND`); nothing happens if there is none. Halo has no assistant of its own (D-012).
 - **Later (Phase 7):** rule-based commands typed into the same field ("next", "reply Elif …", "dark", "battery").
 
+## D-028 · Notification rules in Stream and on Home. **Proposed** (2026-10-26)
+Android doesn't track whether a notification was read, and the designs show the result, not the rules. Rule-based, no AI (D-012):
+- **Unread** is what arrived since the user last left Stream (saved on the phone as `streamSeen`). Unread items are in `NOW`, the rest in `EARLIER`.
+- **Marks:** the newest unread message that can be replied to is the current one (Volt); other unread items are alerts (Flare); read items are hollow.
+- **Actions:** a tap sends the notification's own tap action; a sideways swipe clears it from the phone (only clearable ones); REPLY opens a field under the item and sends through the app's reply action; LATER snoozes it for an hour.
+- **Summary:** new = unread; "Halo read N things" = the rest; "need you" = unread messages to reply to ("Reply to Elif").
+- **Home's card:** the newest unread message that can be replied to; Reply opens it in Stream with the reply field ready, Later snoozes it. The designs' Yes stays for their fixture question.
+- Hidden from Stream: Halo's own notifications, ongoing ones (music, calls, downloads) and group summaries.
+*Open for the owner:* the snooze length, and whether opening Stream (rather than leaving it) should mark things seen.
+

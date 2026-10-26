@@ -49,8 +49,8 @@ A Flutter plugin with a Kotlin side and a Dart side.
 
 | Channel | Direction | Contents |
 |---|---|---|
-| `halo_android` (method) | Dart → Kotlin | `apps`, `icons {ids, size}`, `launch {id}`, `defaultApps`, `roles`, `getPref {key}`, `setPref {key, value}`, `shortcuts {id}`, `startShortcut {id, shortcut}`, `appInfo {id}`, `uninstall {id}`, `openSettings {id}`, `canSearchContacts`, `requestContacts`, `searchContacts {query}`, `openContact {id}`, `privateSpace`, `setPrivateSpaceLocked {locked}`, `openAssistant`, `battery`, `isDefaultHome`, `requestDefaultHome` |
-| `halo_android/events` (event) | Kotlin → Dart | `{type: apps \| home \| battery \| defaultHome \| contacts}` |
+| `halo_android` (method) | Dart → Kotlin | `apps`, `icons {ids, size}`, `launch {id}`, `defaultApps`, `roles`, `getPref {key}`, `setPref {key, value}`, `shortcuts {id}`, `startShortcut {id, shortcut}`, `appInfo {id}`, `uninstall {id}`, `openSettings {id}`, `canSearchContacts`, `requestContacts`, `searchContacts {query}`, `openContact {id}`, `privateSpace`, `setPrivateSpaceLocked {locked}`, `openAssistant`, `canReadCalendar`, `requestCalendar`, `agenda`, `canReadNotifications`, `requestNotificationAccess`, `notifications`, `openNotification {id}`, `dismissNotification {id}`, `snoozeNotification {id}`, `replyNotification {id, text}`, `media`, `setPlaying {playing}`, `battery`, `isDefaultHome`, `requestDefaultHome` |
+| `halo_android/events` (event) | Kotlin → Dart | `{type: apps \| home \| battery \| defaultHome \| contacts \| calendar \| notifications \| media}` |
 
 - **Apps:** `LauncherApps.getActivityList` for every profile (`LauncherApps.profiles`), minus Halo, sorted by label, with `work` and `canUninstall` (false for system apps that weren't updated). The id is the short flattened component name (`com.example/.MainActivity`), with `#<user serial>` for another profile. Package changes come from `LauncherApps.Callback`. Manifest `<queries>` provide package visibility on Android 11+ for launcher entries and for the default-app roles.
 - **Arc and settings:** saved in the app's `SharedPreferences` (`halo`) through `getPref`/`setPref`: the arc as a JSON list of ids, plus `appearance` and `textSize`. With no saved arc, `defaultApps` resolves the user's maps, music, SMS, camera, browser and dialer apps (D-026). Ids of apps that are gone stay saved but aren't shown.
@@ -62,7 +62,10 @@ A Flutter plugin with a Kotlin side and a Dart side.
 - **Launch:** `LauncherApps.startMainActivity`.
 - **Default home:** `RoleManager.ROLE_HOME`; the request falls back to the Home settings screen. The state is re-read when Halo resumes, since the user can change it in Settings.
 - **Home press:** `onNewIntent` with `ACTION_MAIN` + `CATEGORY_HOME` → `home` event → `HaloBackend.homePressed`.
-- **What isn't served yet** is empty, not invented: no agenda, notifications or Recents until Phases 4 and 6. Switchboard values are held in memory until Phase 5.
+- **Calendar** (`READ_CALENDAR`, asked for from Home): today's timed events from `CalendarContract.Instances` of visible calendars, with guest counts from `Attendees`; a `ContentObserver` sends `calendar` on any change, and the Dart side reloads at midnight.
+- **Notifications** (`HaloNotificationService`, a `NotificationListenerService` the user enables in Settings; the plugin tracks the connected instance): `notifications` maps the active ones (title, text, app label, post time, reply and clear flags), leaving out Halo's own, ongoing ones and group summaries. Open sends the tap action, reply fills the reply action's `RemoteInput`, both lending Halo's foreground right to start activities (Android 14+); dismiss and snooze use the listener. Unread and the marks are worked out in Dart (D-028).
+- **Media** (needs the same listener grant): `MediaSessionManager` sessions; the playing one (else the first with metadata) is the media strip, with play/pause through its transport controls. Session, playback and metadata callbacks send `media`.
+- **What isn't served yet** is empty, not invented: no Recents until Phase 6. Switchboard's dials and toggles are held in memory until Phase 5.
 
 `AndroidBackend.create()` loads apps, battery and the default home state before the first frame, so Home never paints an empty arc.
 
