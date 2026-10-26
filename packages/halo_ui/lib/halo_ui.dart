@@ -1,4 +1,4 @@
-/// Halo OS design system: tokens and widgets.
+/// Halo design system: tokens and widgets.
 library;
 
 export 'src/colors.dart';

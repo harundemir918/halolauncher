@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_ui/halo_ui.dart';
@@ -393,6 +395,85 @@ void main() {
       expect(voltBoxes(tester, find.byType(HaloBatteryCells)), 0);
       await pumpHalo(tester, const HaloBatteryCells(fraction: 1));
       expect(voltBoxes(tester, find.byType(HaloBatteryCells)), 10);
+    });
+  });
+
+  group('HaloArc', () {
+    // A 1 × 1 transparent PNG.
+    final png = Uint8List.fromList(const [
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, //
+      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+      0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+      0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+      0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    ]);
+
+    List<HaloArcApp> apps(int n, {bool images = false}) => [
+      for (var i = 0; i < n; i++)
+        HaloArcApp(
+          id: 'app$i',
+          label: 'App $i',
+          icon: HaloIcons.notes,
+          image: images ? MemoryImage(png) : null,
+        ),
+    ];
+
+    Future<void> pumpArc(
+      WidgetTester tester,
+      List<HaloArcApp> list, {
+      int focused = 0,
+      ValueChanged<int>? onFocus,
+    }) {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      return tester.pumpWidget(
+        MaterialApp(
+          theme: HaloTheme.dark(),
+          home: Scaffold(
+            body: HaloArc(
+              apps: list,
+              focusedIndex: focused,
+              onFocus: onFocus ?? (_) {},
+              onLaunch: (_) {},
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('draws the app icon instead of the glyph when given one', (
+      tester,
+    ) async {
+      await pumpArc(tester, apps(3, images: true));
+      expect(find.byType(Image), findsNWidgets(3));
+      expect(find.byType(HaloIcon), findsNothing);
+    });
+
+    testWidgets('draws the glyph without an image', (tester) async {
+      await pumpArc(tester, apps(3));
+      expect(find.byType(Image), findsNothing);
+      expect(find.byType(HaloIcon), findsNWidgets(3));
+    });
+
+    testWidgets('apps added while shown can be reached by dragging', (
+      tester,
+    ) async {
+      int? focused;
+      await pumpArc(tester, apps(1), onFocus: (i) => focused = i);
+      await pumpArc(tester, apps(10), onFocus: (i) => focused = i);
+      await tester.dragFrom(const Offset(300, 780), const Offset(-200, 0));
+      await tester.pumpAndSettle();
+      expect(focused, greaterThan(0));
+    });
+
+    testWidgets('survives the list shrinking under the focus', (tester) async {
+      await pumpArc(tester, apps(10), focused: 9);
+      await pumpArc(tester, apps(2), focused: 1);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('APP 1'), findsOneWidget);
     });
   });
 }

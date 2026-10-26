@@ -12,12 +12,19 @@ class HaloArcApp {
     required this.id,
     required this.label,
     required this.icon,
+    this.image,
     this.unread = false,
   });
 
   final String id;
   final String label;
+
+  /// The Halo glyph, drawn when there is no [image].
   final HaloIcons icon;
+
+  /// The app's own icon. Drawn masked to a circle, with a Volt ring when
+  /// focused (docs/DECISIONS.md D-025).
+  final ImageProvider? image;
   final bool unread;
 }
 
@@ -28,7 +35,8 @@ class HaloArcApp {
 /// top of the circle, 68 px and Volt; its neighbors are 52 px, 20 degrees
 /// apart. Dragging sideways rotates the arc; tapping an app focuses it, and
 /// tapping the focused one launches it. With more than 7 apps the ones past
-/// three steps away are off the arc (see the open question in ROADMAP).
+/// three steps away are off the arc (see the open question in ROADMAP). The
+/// list may grow or shrink while shown (apps installed or removed).
 class HaloArc extends StatefulWidget {
   const HaloArc({
     super.key,
@@ -60,16 +68,20 @@ class HaloArc extends StatefulWidget {
 }
 
 class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
-  late final AnimationController _pos = AnimationController(
+  // Unbounded so the range can follow the app list; [_clamp] keeps it on it.
+  late final AnimationController _pos = AnimationController.unbounded(
     vsync: this,
-    lowerBound: 0,
-    upperBound: math.max(0, widget.apps.length - 1).toDouble(),
     value: widget.focusedIndex.toDouble(),
   );
+
+  double get _last => math.max(0, widget.apps.length - 1).toDouble();
+
+  double _clamp(double v) => v.clamp(0.0, _last);
 
   @override
   void didUpdateWidget(HaloArc old) {
     super.didUpdateWidget(old);
+    if (_pos.value != _clamp(_pos.value)) _pos.value = _clamp(_pos.value);
     if (old.focusedIndex != widget.focusedIndex) {
       _pos.animateTo(
         widget.focusedIndex.toDouble(),
@@ -89,10 +101,7 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
 
   void _dragEnd(DragEndDetails d) {
     // Flick a little further with velocity, then snap to a whole app.
-    final target = (_pos.value - d.primaryVelocity! / 4000).round().clamp(
-      0,
-      widget.apps.length - 1,
-    );
+    final target = _clamp(_pos.value - d.primaryVelocity! / 4000).round();
     if (target == widget.focusedIndex) {
       _pos.animateTo(
         target.toDouble(),
@@ -114,7 +123,7 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
           animation: _pos,
           builder: (context, _) {
             final apps = widget.apps;
-            final nearest = _pos.value.round().clamp(0, apps.length - 1);
+            final nearest = _clamp(_pos.value).round();
             final stack = Stack(
               clipBehavior: Clip.none,
               children: [
@@ -159,7 +168,11 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
               onHorizontalDragStart: (d) => _dragging =
                   d.localPosition.dy > box.maxHeight - HaloArc.dragZone,
               onHorizontalDragUpdate: (d) {
-                if (_dragging) _pos.value -= d.delta.dx / HaloArc._pxPerStep;
+                if (_dragging) {
+                  _pos.value = _clamp(
+                    _pos.value - d.delta.dx / HaloArc._pxPerStep,
+                  );
+                }
               },
               onHorizontalDragEnd: (d) {
                 if (_dragging) _dragEnd(d);
@@ -200,26 +213,48 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color.lerp(halo.signalFill, halo.surface, t),
-                    border: Border.all(
-                      color: Color.lerp(
-                        halo.fillEdge ?? halo.appBorder.withValues(alpha: 0),
-                        halo.appBorder,
-                        t,
-                      )!,
+                if (app.image case final image?)
+                  Container(
+                    padding: EdgeInsets.all(lerpDouble(4, 0, t)),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: halo.surface,
+                      border: Border.all(
+                        color: Color.lerp(halo.signalLine, halo.appBorder, t)!,
+                        width: lerpDouble(2.5, 1, t),
+                      ),
+                    ),
+                    child: ClipOval(
+                      child: Image(
+                        image: image,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.medium,
+                        gaplessPlayback: true,
+                        excludeFromSemantics: true,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color.lerp(halo.signalFill, halo.surface, t),
+                      border: Border.all(
+                        color: Color.lerp(
+                          halo.fillEdge ?? halo.appBorder.withValues(alpha: 0),
+                          halo.appBorder,
+                          t,
+                        )!,
+                      ),
+                    ),
+                    child: HaloIcon(
+                      app.icon,
+                      size: lerpDouble(30, 22, t),
+                      strokeWidth: lerpDouble(2, 1.8, t),
+                      color: Color.lerp(halo.onSignal, halo.text, t)!,
                     ),
                   ),
-                  child: HaloIcon(
-                    app.icon,
-                    size: lerpDouble(30, 22, t),
-                    strokeWidth: lerpDouble(2, 1.8, t),
-                    color: Color.lerp(halo.onSignal, halo.text, t)!,
-                  ),
-                ),
                 if (app.unread && t < 0.5)
                   Positioned(
                     right: -1,
