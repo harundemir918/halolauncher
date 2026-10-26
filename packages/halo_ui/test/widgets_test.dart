@@ -467,6 +467,36 @@ void main() {
       expect(focused, greaterThan(0));
     });
 
+    testWidgets('a monochrome icon is tinted on Volt when focused', (
+      tester,
+    ) async {
+      final list = [
+        for (var i = 0; i < 3; i++)
+          HaloArcApp(
+            id: 'app$i',
+            label: 'App $i',
+            icon: HaloIcons.notes,
+            image: MemoryImage(png),
+            monoImage: MemoryImage(png),
+          ),
+      ];
+      await pumpArc(tester, list, focused: 1);
+      await tester.pumpAndSettle();
+      final mono = tester.widgetList<Image>(find.byKey(const ValueKey('mono')));
+      // Only the focused app shows the tinted mask fully.
+      expect(mono.single.color, HaloColors.carbon);
+      final fill = tester
+          .widgetList<Container>(
+            find.descendant(
+              of: find.byKey(const ValueKey('arc-app1')),
+              matching: find.byType(Container),
+            ),
+          )
+          .map((c) => (c.decoration as BoxDecoration?)?.color)
+          .whereType<Color>();
+      expect(fill, contains(HaloColors.volt));
+    });
+
     testWidgets('a long press reports the app', (tester) async {
       HaloArcApp? held;
       tester.view.physicalSize = const Size(390, 844);
@@ -631,5 +661,69 @@ void main() {
       final un = tester.widget<Text>(find.text('Uninstall'));
       expect(un.style!.color, isNot(HaloColors.bone));
     });
+  });
+
+  group('HaloResultRow', () {
+    testWidgets('a contact: initials in a notch, never a circle', (
+      tester,
+    ) async {
+      var taps = 0;
+      await pumpHalo(
+        tester,
+        HaloResultRow(
+          title: 'Mira Okafor',
+          initials: 'MO',
+          onTap: () => taps++,
+        ),
+      );
+      expect(find.text('MO'), findsOneWidget);
+      final box = tester.widget<Container>(
+        find
+            .ancestor(of: find.text('MO'), matching: find.byType(Container))
+            .first,
+      );
+      expect(box.decoration, isA<ShapeDecoration>());
+      expect((box.decoration! as ShapeDecoration).shape, isA<NotchBorder>());
+      await tester.tap(find.byType(HaloResultRow));
+      expect(taps, 1);
+    });
+
+    testWidgets('a caption is ash, or Volt for the primary action', (
+      tester,
+    ) async {
+      await pumpHalo(
+        tester,
+        const Column(
+          children: [
+            HaloResultRow(title: 'Battery', caption: 'Settings'),
+            HaloResultRow(
+              title: 'Search your contacts too',
+              caption: 'Allow',
+              captionSignal: true,
+            ),
+          ],
+        ),
+      );
+      expect(
+        tester.widget<Text>(find.text('SETTINGS')).style!.color,
+        HaloColors.ash,
+      );
+      expect(
+        tester.widget<Text>(find.text('ALLOW')).style!.color,
+        HaloColors.volt,
+      );
+    });
+  });
+
+  testWidgets('HaloAppRow tags private space apps', (tester) async {
+    await pumpHalo(
+      tester,
+      const HaloAppRow(
+        label: 'Bank',
+        icon: HaloIcons.notes,
+        privateSpace: true,
+      ),
+    );
+    expect(find.text('PRIVATE'), findsOneWidget);
   });
 }
