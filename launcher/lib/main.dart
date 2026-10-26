@@ -8,6 +8,8 @@ import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import 'backend_builder.dart';
+import 'app_menu.dart';
+import 'apps/apps_screen.dart';
 import 'design_frame.dart';
 import 'dev/bench_screen.dart';
 import 'gestures.dart';
@@ -85,9 +87,24 @@ class _HaloLauncherState extends State<HaloLauncher> {
     super.dispose();
   }
 
+  /// The app whose long-press menu is open.
+  HaloAppInfo? _menu;
+
+  void _openMenu(HaloAppInfo app) => setState(() => _menu = app);
+
+  void _closeMenu() => setState(() => _menu = null);
+
   void _goHome() {
-    if (_screen != 'home') setState(() => _screen = 'home');
+    if (_screen != 'home' || _menu != null) {
+      setState(() {
+        _screen = 'home';
+        _menu = null;
+      });
+    }
   }
+
+  /// Back closes the menu first, then returns to Home.
+  void _back() => _menu != null ? _closeMenu() : _goHome();
 
   /// Starts the app, or shows a stand-in when the backend can't (the mock).
   Future<void> _launch(String id) async {
@@ -102,6 +119,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
       EdgeZone.topLeft => 'stream',
       // Up from the bottom: Home, and from Home, Recents.
       EdgeZone.bottom => _screen == 'home' ? 'recents' : 'home',
+      EdgeZone.lowerArea => 'apps',
     };
   });
 
@@ -112,7 +130,16 @@ class _HaloLauncherState extends State<HaloLauncher> {
         backend: widget.backend,
         onUnlock: () => setState(() => _screen = 'home'),
       ),
-      'home' => HomeScreen(backend: widget.backend, onLaunch: _launch),
+      'home' => HomeScreen(
+        backend: widget.backend,
+        onLaunch: _launch,
+        onLongPress: _openMenu,
+      ),
+      'apps' => AppsScreen(
+        backend: widget.backend,
+        onLaunch: _launch,
+        onLongPress: _openMenu,
+      ),
       'switchboard' => SwitchboardScreen(backend: widget.backend),
       'recents' => RecentsScreen(backend: widget.backend),
       'stream' => StreamScreen(backend: widget.backend),
@@ -138,14 +165,31 @@ class _HaloLauncherState extends State<HaloLauncher> {
             // Back never leaves the launcher; it returns to Home.
             child: PopScope(
               canPop: false,
-              onPopInvokedWithResult: (didPop, _) => _goHome(),
+              onPopInvokedWithResult: (didPop, _) => _back(),
               child: Scaffold(
                 backgroundColor: context.halo.ground,
                 body: DesignFrame(
-                  // Lock only opens with the hold ring, so it has no edge swipes.
-                  child: _screen == 'lock'
-                      ? screen
-                      : EdgeSwipes(onSwipe: _onSwipe, child: screen),
+                  child: Stack(
+                    children: [
+                      // Lock only opens with the hold ring, so it has no edge
+                      // swipes. On Home, an up swipe on the arc opens Apps.
+                      if (_screen == 'lock')
+                        screen
+                      else
+                        EdgeSwipes(
+                          onSwipe: _onSwipe,
+                          lowerArea: _screen == 'home' ? HaloArc.dragZone : 0,
+                          child: screen,
+                        ),
+                      if (_menu case final app?)
+                        AppMenuLayer(
+                          key: ValueKey('menu-${app.id}'),
+                          backend: widget.backend,
+                          app: app,
+                          onClose: _closeMenu,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

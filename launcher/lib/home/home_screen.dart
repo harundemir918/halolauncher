@@ -8,26 +8,36 @@ import '../status_bar.dart';
 
 /// Home: what matters now at the top, the apps on an arc in thumb reach.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.backend, required this.onLaunch});
+  const HomeScreen({
+    super.key,
+    required this.backend,
+    required this.onLaunch,
+    this.onLongPress,
+  });
 
   final HaloBackend backend;
 
   /// Called with the app id when the focused app is tapped.
   final ValueChanged<String> onLaunch;
 
+  /// A long press on an app on the arc (its menu).
+  final ValueChanged<HaloAppInfo>? onLongPress;
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late int _focused = _initialFocus();
+  /// Null until the arc has apps: right after an install the app list can
+  /// arrive in pieces, and the start focus must come from the full arc.
+  int? _focused;
 
   /// The "make Halo your home screen" card was put off for this session.
   bool _defaultHomeLater = false;
 
   /// Start on the app with something unread, else the middle of the arc.
   int _initialFocus() {
-    final apps = widget.backend.apps;
+    final apps = widget.backend.arcApps;
     final unread = widget.backend.notifications
         .where((n) => n.unread)
         .map((n) => n.app)
@@ -49,7 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
         .where((n) => n.unread && n.actionPrompt != null)
         .firstOrNull;
     // Apps come and go (installs, removals), so keep the focus on the arc.
-    final focused = b.apps.isEmpty ? 0 : _focused.clamp(0, b.apps.length - 1);
+    final arc = b.arcApps;
+    if (arc.isNotEmpty) _focused ??= _initialFocus();
+    final focused = arc.isEmpty ? 0 : _focused!.clamp(0, arc.length - 1);
 
     return ColoredBox(
       color: context.halo.ground,
@@ -58,18 +70,23 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned.fill(
             child: HaloArc(
               apps: [
-                for (final a in b.apps)
+                for (final a in arc)
                   HaloArcApp(
                     id: a.id,
                     label: a.label,
                     icon: iconFor(a),
-                    image: a.icon == null ? null : MemoryImage(a.icon!),
+                    image: imageFor(a),
                     unread: unreadApps.contains(a.id),
                   ),
               ],
               focusedIndex: focused,
               onFocus: (i) => setState(() => _focused = i),
               onLaunch: (app) => widget.onLaunch(app.id),
+              onLongPress: widget.onLongPress == null
+                  ? null
+                  : (app) => widget.onLongPress!(
+                      arc.firstWhere((a) => a.id == app.id),
+                    ),
             ),
           ),
           Positioned(

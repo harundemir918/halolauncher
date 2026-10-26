@@ -1,3 +1,4 @@
+import 'package:flutter/painting.dart';
 import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
 
@@ -8,3 +9,7 @@ HaloIcons iconFor(HaloAppInfo app) {
   }
   return HaloIcons.notes;
 }
+
+/// The app's own icon, when the platform gave one.
+ImageProvider? imageFor(HaloAppInfo app) =>
+    app.icon == null ? null : MemoryImage(app.icon!);

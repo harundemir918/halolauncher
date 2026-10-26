@@ -208,4 +208,33 @@ void main() {
     expect(find.textContaining('50%'), findsOneWidget);
     expect(find.byType(HaloStatusRow), findsOneWidget);
   });
+
+  testWidgets('Home picks its start focus once the arc has apps', (
+    tester,
+  ) async {
+    final b = LateArc();
+    await pumpLauncher(tester, b);
+    expect(find.byType(HaloArc), findsOneWidget);
+    b.fill();
+    await tester.pumpAndSettle();
+    // Seven apps: the middle one, Messages, not the first.
+    expect(find.text('MESSAGES'), findsOneWidget);
+  });
+}
+
+/// An arc that is empty at first, as right after an install.
+class LateArc extends PhoneBackend {
+  bool _filled = false;
+  final _changed = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> get changes => _changed.stream;
+
+  @override
+  List<HaloAppInfo> get arcApps => _filled ? super.arcApps : const [];
+
+  void fill() {
+    _filled = true;
+    _changed.add(null);
+  }
 }
