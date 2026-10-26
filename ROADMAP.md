@@ -45,7 +45,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 **Exit:** all six screens match the designs in golden tests in both appearances, and the launcher is fully navigable on macOS with mock data.
 
 ## Phase 3: Home Arc with real apps ☑
-- ☑ Real app icons, drawn as circles (D-025): an app with a monochrome icon (Android 13+) is drawn as in the design when focused, Volt fill and the icon in carbon; other apps keep their icon with a Volt ring
+- ☑ App icons on the arc like `home.png` (D-025): bone glyphs on `surface`, the focused app carbon on Volt. Default apps for the design's roles get the design's glyphs; other apps their monochrome layer or a mask derived from their icon
 - ☑ Choose and reorder the apps on the arc, saved on the phone; first filled with the default apps (D-026)
 - ☑ More than 7 apps: the arc scrolls, plus the Apps list, **not a grid**: A to Z with letter headings and a letter index, opened by an up swipe on the arc (D-026)
 - ☑ Search from the command field, in APPS, CONTACTS and SETTINGS sections: apps (prefix, word, anywhere; Turkish-aware), contacts behind an optional permission asked for from search with "Names stay on this phone", and system settings pages. Go opens the best app, else the best settings page

@@ -99,9 +99,12 @@ Android owns the bottom edge (home and Overview), the side edges (back) and the 
 ## D-024 · System bars and the design frame. **Proposed** (2026-10-26), interim
 The launcher draws edge to edge behind transparent system bars, and lays out the 390-wide design frame inside the safe area, scaled by width (`launcher/lib/design_frame.dart`). The shell's own status row stays for now, so time and battery show twice. The owner decides whether to hide the system status bar on Home or drop the shell's status row (ROADMAP open question).
 
-## D-025 · App icons on the arc. **Proposed** (2026-10-26)
-The designs draw every app as an outline glyph, Volt-filled when focused. Real apps bring their own icons. The arc shows each app's icon masked to a circle. When the app has a monochrome icon layer (Android 13+ themed icons), the focused app is drawn as in the design: a Volt circle with that layer in the on-signal color (carbon), crossfading to the app's own colors as it leaves focus. Apps without one get a Volt ring when focused. Volt still means "the active one".
-*Open for the owner:* whether unfocused apps should also go monochrome (closer to the glyph designs, less recognizable).
+## D-025 · App icons on the arc: like `home.png`. **Decided** (2026-10-26)
+The owner chose the design's look for every app on the arc, not only the focused one: a bone glyph on a `surface` circle, and the focused app a Volt circle with the glyph in carbon. No color icons on the arc.
+- **The user's default apps for the design's roles** (maps, music, messages, camera, browser, phone) are drawn with the design's own glyphs, exactly as `home.png`.
+- **Every other app** is drawn from a monochrome mask, padded to a glyph's share of the circle: the icon's own monochrome layer (Android 13+ themed icons) when it has one, else a mask derived from the icon (the parts of an adaptive icon that differ from its background layer; for a legacy icon, what differs from its edge color).
+- The color icon is used only if no mask can be made. The Apps list keeps color icons, to help find an app.
+*History:* first proposed as color icons with a Volt ring on the focused app, then monochrome only when focused; the owner asked for `home.png`.
 
 ## D-026 · Apps: a list, the arc you keep, and a long-press menu. **Proposed** (2026-10-26)
 The designs have no "all apps" view. With 100+ apps the arc alone can't reach everything, and rule 01 forbids a grid. Proposal, built in Phase 3:

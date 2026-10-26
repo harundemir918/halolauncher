@@ -167,7 +167,7 @@ Blocks have a **large top-left radius** and small radii on the other three corne
 | `radiusFlatS` | 4 (all corners) | Unselected segments, switch track |
 | `radiusKnob` | 2 | Switch knobs, battery cells |
 
-**Circles are for apps only.** App icons are 52 × 52 circles (radius 26) with a `line12` border on `surface`. The focused app grows (to about 68) and fills with Volt. Nothing else is round, except for status dots (8–9 px), the dials, and the lock "hold to open" ring.
+**Circles are for apps only.** App icons are 52 × 52 circles (radius 26) with a `line12` border on `surface`. The focused app grows (to about 68) and fills with Volt. On Android, real apps follow this too (D-025): role apps get the design glyphs, others a monochrome mask of their icon tinted like a glyph (bone, carbon on Volt). Nothing else is round, except for status dots (8–9 px), the dials, and the lock "hold to open" ring.
 
 ## 5. Spacing and layout
 
