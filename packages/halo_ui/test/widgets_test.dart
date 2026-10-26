@@ -467,7 +467,7 @@ void main() {
       expect(focused, greaterThan(0));
     });
 
-    testWidgets('a monochrome icon is tinted on Volt when focused', (
+    testWidgets('monochrome icons are drawn like the design glyphs', (
       tester,
     ) async {
       final list = [
@@ -482,9 +482,22 @@ void main() {
       ];
       await pumpArc(tester, list, focused: 1);
       await tester.pumpAndSettle();
-      final mono = tester.widgetList<Image>(find.byKey(const ValueKey('mono')));
-      // Only the focused app shows the tinted mask fully.
-      expect(mono.single.color, HaloColors.carbon);
+      Image monoOf(String id) => tester.widget<Image>(
+        find.descendant(
+          of: find.byKey(ValueKey('arc-$id')),
+          matching: find.byKey(const ValueKey('mono')),
+        ),
+      );
+      // Focused: carbon on Volt. The others: bone on surface. No color icon.
+      expect(monoOf('app1').color, HaloColors.carbon);
+      expect(monoOf('app0').color, HaloColors.bone);
+      expect(monoOf('app2').color, HaloColors.bone);
+      expect(
+        tester
+            .widgetList<Image>(find.byType(Image))
+            .every((img) => img.key == const ValueKey('mono')),
+        isTrue,
+      );
       final fill = tester
           .widgetList<Container>(
             find.descendant(

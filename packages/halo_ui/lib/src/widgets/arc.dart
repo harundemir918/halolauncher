@@ -27,8 +27,9 @@ class HaloArcApp {
   /// focused (docs/DECISIONS.md D-025).
   final ImageProvider? image;
 
-  /// The app's monochrome icon (an alpha mask). With it, the focused app is
-  /// drawn as in the design: Volt fill, icon in the on-signal color.
+  /// The app's monochrome icon (an alpha mask). With it the app is drawn like
+  /// the design's glyphs: bone, or Volt fill with the icon in the on-signal
+  /// color when focused. It wins over [image].
   final ImageProvider? monoImage;
   final bool unread;
 }
@@ -228,8 +229,8 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                if ((app.image, app.monoImage) case (final image?, final mono?))
-                  _ThemedIcon(image: image, mono: mono, t: t, halo: halo)
+                if (app.monoImage case final mono?)
+                  _ThemedIcon(mono: mono, t: t, halo: halo)
                 else if (app.image case final image?)
                   Container(
                     padding: EdgeInsets.all(lerpDouble(4, 0, t)),
@@ -295,65 +296,42 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
   }
 }
 
-/// An app with a monochrome icon: focused (t = 0) it is the design's Volt
-/// circle with the icon in the on-signal color; away from focus it crossfades
-/// to the app's own colors on `surface`.
+/// An app drawn from its monochrome icon, like the design's glyphs: bone on
+/// `surface`, and focused (t = 0) the Volt circle with the icon in the
+/// on-signal color. The mask is padded to a glyph's share of the circle.
 class _ThemedIcon extends StatelessWidget {
-  const _ThemedIcon({
-    required this.image,
-    required this.mono,
-    required this.t,
-    required this.halo,
-  });
+  const _ThemedIcon({required this.mono, required this.t, required this.halo});
 
-  final ImageProvider image;
   final ImageProvider mono;
   final double t;
   final HaloPalette halo;
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: Color.lerp(halo.signalFill, halo.surface, t),
-      border: Border.all(
-        color: Color.lerp(
-          halo.fillEdge ?? halo.appBorder.withValues(alpha: 0),
-          halo.appBorder,
-          t,
-        )!,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) => Container(
+      padding: EdgeInsets.all(box.maxWidth * 0.14),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color.lerp(halo.signalFill, halo.surface, t),
+        border: Border.all(
+          color: Color.lerp(
+            halo.fillEdge ?? halo.appBorder.withValues(alpha: 0),
+            halo.appBorder,
+            t,
+          )!,
+        ),
       ),
-    ),
-    child: ClipOval(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (t > 0)
-            Opacity(
-              opacity: t,
-              child: Image(
-                image: image,
-                fit: BoxFit.cover,
-                filterQuality: FilterQuality.medium,
-                gaplessPlayback: true,
-                excludeFromSemantics: true,
-              ),
-            ),
-          if (t < 1)
-            Opacity(
-              opacity: 1 - t,
-              child: Image(
-                key: const ValueKey('mono'),
-                image: mono,
-                fit: BoxFit.cover,
-                color: halo.onSignal,
-                colorBlendMode: BlendMode.srcIn,
-                filterQuality: FilterQuality.medium,
-                gaplessPlayback: true,
-                excludeFromSemantics: true,
-              ),
-            ),
-        ],
+      child: Image(
+        key: const ValueKey('mono'),
+        image: mono,
+        fit: BoxFit.contain,
+        color: Color.lerp(halo.onSignal, halo.text, t),
+        colorBlendMode: BlendMode.srcIn,
+        // Not medium: its mipmaps drew faint lines around some masks on
+        // Android. The mask is only slightly larger than drawn.
+        filterQuality: FilterQuality.low,
+        gaplessPlayback: true,
+        excludeFromSemantics: true,
       ),
     ),
   );
