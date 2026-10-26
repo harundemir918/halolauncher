@@ -82,7 +82,7 @@ Android 10 (API 29) brings `RoleManager.ROLE_HOME` (asking to become the default
 `halo_android` holds the Kotlin side (LauncherApps, intents, later notifications, calendar, settings) and the Dart `AndroidBackend` that implements `HaloBackend`. The launcher only sees `HaloBackend`, so `halo_sdk` stays pure Dart and the mock keeps working on macOS. One `MethodChannel` for calls and one `EventChannel` for changes; messages are maps of standard types.
 *Alternatives:* Kotlin in the launcher's own `android/` module (fewer packages, but the backend can't be tested on its own), Pigeon codegen (typed, but one more pinned dependency and generated code to review).
 
-## D-020 · Application id `com.harundemir.halolauncher`. **Proposed** (2026-10-26)
+## D-020 · Application id `com.baklavapp.halolauncher`. **Proposed** (2026-10-26)
 The id can't change once the app is published, so the owner should confirm it before the first store upload. It is also the Kotlin package name.
 
 ## D-021 · Lock design on Android. **Open**

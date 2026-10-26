@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.harundemir.halolauncher"
+    namespace = "com.baklavapp.halolauncher"
     // Versions: docs/DECISIONS.md D-018.
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         // Permanent once published: docs/DECISIONS.md D-020.
-        applicationId = "com.harundemir.halolauncher"
+        applicationId = "com.baklavapp.halolauncher"
         minSdk = 29
         targetSdk = 36
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION

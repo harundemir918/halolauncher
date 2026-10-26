@@ -19,7 +19,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 **Exit:** a clean checkout contains only the launcher, its packages, the designs and the docs, and CI is green.
 
 ## Phase 1: Launcher skeleton on Android
-- ☑ Move `shell/` to `launcher/`, add the Android platform, application id (`com.harundemir.halolauncher`, D-020) and app name (Halo)
+- ☑ Move `shell/` to `launcher/`, add the Android platform, application id (`com.baklavapp.halolauncher`, D-020) and app name (Halo)
 - ☑ Register as a home app (`MAIN` + `HOME` intent filter, `singleTask`), and offer to become the default launcher (`RoleManager.ROLE_HOME`) from a Home action card
 - ☑ Home button returns to Home Arc; the back gesture never leaves the launcher
 - ☑ Edge-to-edge drawing, transparent system bars with icons matching the appearance, launch theme in the Halo ground, safe areas (D-024). Display cutouts in landscape are not handled (the launcher is portrait)

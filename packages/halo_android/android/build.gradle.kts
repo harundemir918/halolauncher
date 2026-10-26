@@ -1,4 +1,4 @@
-group = "com.harundemir.halolauncher.platform"
+group = "com.baklavapp.halolauncher.platform"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -26,7 +26,7 @@ plugins {
 }
 
 android {
-    namespace = "com.harundemir.halolauncher.platform"
+    namespace = "com.baklavapp.halolauncher.platform"
 
     compileSdk = 36
 

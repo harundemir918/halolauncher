@@ -70,4 +70,4 @@ A Flutter plugin with a Kotlin side and a Dart side.
 
 ## 6. Versions
 
-Flutter 3.47.4 (`.flutter-version`), Android Gradle Plugin 9.1.0, Kotlin 2.4.0, Gradle 9.3.1, Java 17 bytecode. `minSdk` 29, `targetSdk` and `compileSdk` 36 (D-018). Application id `com.harundemir.halolauncher` (D-020).
+Flutter 3.47.4 (`.flutter-version`), Android Gradle Plugin 9.1.0, Kotlin 2.4.0, Gradle 9.3.1, Java 17 bytecode. `minSdk` 29, `targetSdk` and `compileSdk` 36 (D-018). Application id `com.baklavapp.halolauncher` (D-020).

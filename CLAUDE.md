@@ -85,7 +85,7 @@ cd launcher && flutter test                 # add --update-goldens after a delib
 cd launcher && flutter run -d <device>      # --dart-define=HALO_BACKEND=mock shows the design fixtures
 cd launcher && flutter build apk --debug
 # Make it the home app without the dialog (emulator or test phone):
-adb shell cmd role add-role-holder android.app.role.HOME com.harundemir.halolauncher 0
+adb shell cmd role add-role-holder android.app.role.HOME com.baklavapp.halolauncher 0
 
 # Token gallery on macOS
 cd packages/halo_ui/example && flutter run -d macos

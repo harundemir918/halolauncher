@@ -22,5 +22,5 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.harundemir.halolauncher.platform
+        package: com.baklavapp.halolauncher.platform
         pluginClass: HaloAndroidPlugin

@@ -1,4 +1,4 @@
-package com.harundemir.halolauncher.platform
+package com.baklavapp.halolauncher.platform
 
 import android.app.Activity
 import android.app.role.RoleManager

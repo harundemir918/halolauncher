@@ -1,4 +1,4 @@
-package com.harundemir.halolauncher
+package com.baklavapp.halolauncher
 
 import io.flutter.embedding.android.FlutterActivity
 
