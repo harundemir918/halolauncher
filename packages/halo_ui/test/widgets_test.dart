@@ -579,6 +579,22 @@ void main() {
     });
   });
 
+  testWidgets('HaloCommandField reopens a closed keyboard on tap', (
+    tester,
+  ) async {
+    final c = TextEditingController();
+    addTearDown(c.dispose);
+    await pumpHalo(tester, HaloCommandField(controller: c, autofocus: true));
+    await tester.pump();
+    expect(tester.testTextInput.isVisible, isTrue);
+    // The user closes the keyboard; the field keeps its focus.
+    tester.testTextInput.hide();
+    expect(tester.testTextInput.isVisible, isFalse);
+    await tester.tap(find.byType(HaloCommandField));
+    await tester.pump();
+    expect(tester.testTextInput.isVisible, isTrue);
+  });
+
   group('HaloAppRow', () {
     testWidgets('shows the name, tags and reports taps and long presses', (
       tester,
@@ -738,5 +754,20 @@ void main() {
       ),
     );
     expect(find.text('PRIVATE'), findsOneWidget);
+  });
+
+  testWidgets('HaloButton reports a long press when given one', (tester) async {
+    var taps = 0, holds = 0;
+    await pumpHalo(
+      tester,
+      HaloButton(
+        label: 'Ask Halo',
+        onPressed: () => taps++,
+        onLongPress: () => holds++,
+      ),
+    );
+    await tester.tap(find.byType(HaloButton));
+    await tester.longPress(find.byType(HaloButton));
+    expect((taps, holds), (1, 1));
   });
 }

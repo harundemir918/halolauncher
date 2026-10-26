@@ -40,6 +40,13 @@ class _HaloCommandFieldState extends State<HaloCommandField> {
 
   FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
 
+  final _editable = GlobalKey<EditableTextState>();
+
+  /// Focuses the field and shows the keyboard. The field keeps its focus
+  /// when the user closes the keyboard, so asking for focus again would do
+  /// nothing; this reopens the keyboard, as `TextField` does.
+  void _showKeyboard() => _editable.currentState?.requestKeyboard();
+
   @override
   void dispose() {
     _ownFocus?.dispose();
@@ -79,7 +86,11 @@ class _HaloCommandFieldState extends State<HaloCommandField> {
           alignment: Alignment.centerLeft,
           children: [
             EditableText(
+              key: _editable,
               controller: controller,
+              // Taps go to the field's own handler, which reopens the
+              // keyboard; the text renderer would swallow them.
+              rendererIgnoresPointer: true,
               focusNode: _focus,
               autofocus: widget.autofocus,
               style: HaloType.command.copyWith(color: halo.text),
@@ -103,11 +114,11 @@ class _HaloCommandFieldState extends State<HaloCommandField> {
     return Semantics(
       textField: true,
       label: widget.placeholder,
-      onTap: widget.onTap ?? (controller == null ? null : _focus.requestFocus),
+      onTap: widget.onTap ?? (controller == null ? null : _showKeyboard),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          if (controller != null) _focus.requestFocus();
+          if (controller != null) _showKeyboard();
           widget.onTap?.call();
         },
         child: Container(

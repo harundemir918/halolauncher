@@ -32,10 +32,14 @@ class HaloButton extends StatelessWidget {
     this.variant = HaloButtonVariant.primary,
     this.size = HaloButtonSize.regular,
     this.leading,
+    this.onLongPress,
   });
 
   final String label;
   final VoidCallback? onPressed;
+
+  /// A second action on a long press (Ask Halo: the system assistant).
+  final VoidCallback? onLongPress;
   final HaloButtonVariant variant;
   final HaloButtonSize size;
 
@@ -69,10 +73,12 @@ class HaloButton extends StatelessWidget {
       enabled: onPressed != null,
       label: label,
       onTap: onPressed,
+      onLongPress: onLongPress,
       child: ExcludeSemantics(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onPressed,
+          onLongPress: onLongPress,
           child: Container(
             height: small ? 32 : 44,
             padding: EdgeInsets.symmetric(horizontal: small ? 14 : 20),
