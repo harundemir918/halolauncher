@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_sdk/halo_sdk.dart';
-import 'package:halo_shell/main.dart';
-import 'package:halo_shell/stream/stream_screen.dart';
-import 'package:halo_shell/switchboard/switchboard_screen.dart';
-import 'package:halo_shell/recents/recents_screen.dart';
-import 'package:halo_shell/home/home_screen.dart';
-import 'package:halo_shell/lock/lock_screen.dart';
+import 'package:halo_launcher/main.dart';
+import 'package:halo_launcher/stream/stream_screen.dart';
+import 'package:halo_launcher/switchboard/switchboard_screen.dart';
+import 'package:halo_launcher/recents/recents_screen.dart';
+import 'package:halo_launcher/home/home_screen.dart';
+import 'package:halo_launcher/lock/lock_screen.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import 'support/fonts.dart';
@@ -21,7 +21,9 @@ void main() {
     tester.view.physicalSize = const Size(390 * 2, 844 * 2);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
-    return tester.pumpWidget(HaloShell(backend: MockBackend(), start: start));
+    return tester.pumpWidget(
+      HaloLauncher(backend: MockBackend(), start: start),
+    );
   }
 
   Future<void> swipe(WidgetTester tester, Offset from, Offset by) async {

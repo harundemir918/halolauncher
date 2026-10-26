@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Halo ground (halo_ui HaloPalette.light.ground), shown until Flutter's first frame. -->
+    <color name="halo_ground">#F3F1E9</color>
+</resources>

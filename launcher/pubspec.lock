@@ -67,6 +67,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  halo_android:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_android"
+      relative: true
+    source: path
+    version: "0.0.1"
   halo_sdk:
     dependency: "direct main"
     description:

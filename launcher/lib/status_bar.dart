@@ -29,7 +29,10 @@ class ShellStatusBar extends StatelessWidget {
                 TextSpan(text: '  ${HaloFormat.statusDate(now)}'),
               ],
             ),
-            right: '${status.network} · ${status.batteryPercent}%',
+            right: [
+              if (status.network.isNotEmpty) status.network,
+              '${status.batteryPercent}%',
+            ].join(' · '),
           ),
         ),
       ],

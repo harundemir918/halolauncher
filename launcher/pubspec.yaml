@@ -1,5 +1,5 @@
-name: halo_shell
-description: "Halo OS shell: lock, home, recents, switchboard, stream, OSDs."
+name: halo_launcher
+description: "Halo Launcher: an Android home-screen launcher built with Flutter."
 publish_to: 'none'
 version: 0.0.1
 
@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  halo_android:
+    path: ../packages/halo_android
   halo_sdk:
     path: ../packages/halo_sdk
   halo_ui:

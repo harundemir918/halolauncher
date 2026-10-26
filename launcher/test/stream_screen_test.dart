@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_sdk/halo_sdk.dart';
-import 'package:halo_shell/format.dart';
-import 'package:halo_shell/stream/stream_screen.dart';
+import 'package:halo_launcher/format.dart';
+import 'package:halo_launcher/stream/stream_screen.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import 'support/fonts.dart';

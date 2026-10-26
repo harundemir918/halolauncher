@@ -22,6 +22,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late int _focused = _initialFocus();
 
+  /// The "make Halo your home screen" card was put off for this session.
+  bool _defaultHomeLater = false;
+
   /// Start on the app with something unread, else the middle of the arc.
   int _initialFocus() {
     final apps = widget.backend.apps;
@@ -45,6 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final ask = b.notifications
         .where((n) => n.unread && n.actionPrompt != null)
         .firstOrNull;
+    // Apps come and go (installs, removals), so keep the focus on the arc.
+    final focused = b.apps.isEmpty ? 0 : _focused.clamp(0, b.apps.length - 1);
 
     return ColoredBox(
       color: context.halo.ground,
@@ -58,10 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     id: a.id,
                     label: a.label,
                     icon: iconFor(a),
+                    image: a.icon == null ? null : MemoryImage(a.icon!),
                     unread: unreadApps.contains(a.id),
                   ),
               ],
-              focusedIndex: _focused,
+              focusedIndex: focused,
               onFocus: (i) => setState(() => _focused = i),
               onLaunch: (app) => widget.onLaunch(app.id),
             ),
@@ -97,9 +103,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          if (ask != null)
+          if (!b.isDefaultHome && !_defaultHomeLater)
             Positioned(
-              top: 508,
+              // 508 from the top on the 844 design; anchored to the arc so it
+              // never overlaps it on shorter safe areas.
+              bottom: 244,
+              left: HaloSpace.gutter,
+              right: HaloSpace.gutter,
+              child: HaloActionCard(
+                sender: 'Halo',
+                age: 'Setup',
+                message: 'Set Halo as home?',
+                onYes: b.requestDefaultHome,
+                onLater: () => setState(() => _defaultHomeLater = true),
+              ),
+            )
+          else if (ask != null)
+            Positioned(
+              // 508 from the top on the 844 design; anchored to the arc so it
+              // never overlaps it on shorter safe areas.
+              bottom: 244,
               left: HaloSpace.gutter,
               right: HaloSpace.gutter,
               child: HaloActionCard(
