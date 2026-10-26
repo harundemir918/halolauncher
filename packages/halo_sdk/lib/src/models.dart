@@ -110,7 +110,9 @@ class HaloAppInfo {
     required this.id,
     required this.label,
     this.icon,
+    this.monoIcon,
     this.work = false,
+    this.privateSpace = false,
     this.canUninstall = true,
   });
 
@@ -123,20 +125,59 @@ class HaloAppInfo {
   /// the launcher draws a Halo glyph.
   final Uint8List? icon;
 
+  /// The icon's monochrome layer (Android 13+ themed icons) as a PNG alpha
+  /// mask, when the app has one. The arc tints it carbon on Volt when focused.
+  final Uint8List? monoIcon;
+
   /// Installed in the work profile.
   final bool work;
+
+  /// Installed in the private space (Android 15+).
+  final bool privateSpace;
 
   /// False for apps that ship with the system and can't be removed.
   final bool canUninstall;
 
-  HaloAppInfo withIcon(Uint8List? icon) => HaloAppInfo(
+  HaloAppInfo withIcons(Uint8List? icon, Uint8List? monoIcon) => HaloAppInfo(
     id: id,
     label: label,
     icon: icon,
+    monoIcon: monoIcon,
     work: work,
+    privateSpace: privateSpace,
     canUninstall: canUninstall,
   );
 }
+
+/// A page of the system settings that search can open (`Wi-Fi`, `Battery`).
+class SettingsPage {
+  const SettingsPage({required this.id, required this.label});
+
+  /// Stable id the backend maps to a settings screen (`wifi`).
+  final String id;
+  final String label;
+}
+
+/// A contact found by search. Its [id] is opaque to the launcher.
+class ContactResult {
+  const ContactResult({required this.id, required this.name});
+
+  final String id;
+  final String name;
+
+  /// Up to two initials for the notch avatar (`MO` for Mira Okafor).
+  String get initials {
+    final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    return words
+        .take(2)
+        .map((w) => String.fromCharCode(w.runes.first).toUpperCase())
+        .join();
+  }
+}
+
+/// The Android 15 private space: absent, or present and locked or unlocked.
+/// Its apps are listed only while it is unlocked.
+enum PrivateSpaceState { none, locked, unlocked }
 
 /// One of an app's shortcuts (`New message`, `Elif`), from a long press.
 class AppShortcut {

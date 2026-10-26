@@ -109,6 +109,30 @@ void main() {
     expect(b.uninstallRequests, ['web']);
   });
 
+  group('search sources', () {
+    test('contacts from the design copy, gated by the permission', () async {
+      final b = MockBackend();
+      expect((await b.searchContacts('mi')).single.name, 'Mira Okafor');
+      b.canSearchContacts = false;
+      expect(await b.searchContacts('mi'), isEmpty);
+      await b.requestContactsAccess();
+      expect(b.contactsRequests, 1);
+    });
+
+    test('settings pages and opening them', () async {
+      final b = MockBackend();
+      expect(b.settingsPages, isNotEmpty);
+      await b.openSettingsPage('battery');
+      await b.openContact('elif');
+      expect(b.settingsRequests, ['battery']);
+      expect(b.contactRequests, ['elif']);
+    });
+
+    test('no private space', () {
+      expect(MockBackend().privateSpace, PrivateSpaceState.none);
+    });
+  });
+
   test('Elif has an action prompt', () {
     expect(backend.notifications.first.actionPrompt, 'Still on for 7?');
     expect(backend.notifications.last.actionPrompt, isNull);

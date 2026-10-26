@@ -64,6 +64,28 @@ abstract interface class HaloBackend {
   /// Asks the system to uninstall the app; the system confirms with the user.
   Future<void> uninstall(String appId);
 
+  /// System settings pages that search can open.
+  List<SettingsPage> get settingsPages;
+
+  Future<void> openSettingsPage(String id);
+
+  /// Whether search may look in the contacts (an optional permission).
+  bool get canSearchContacts;
+
+  /// Asks for the contacts permission. [changes] fires once it is answered.
+  Future<void> requestContactsAccess();
+
+  /// Contacts whose name matches [query], best first, at most a few.
+  /// Empty without the permission.
+  Future<List<ContactResult>> searchContacts(String query);
+
+  Future<void> openContact(String id);
+
+  PrivateSpaceState get privateSpace;
+
+  /// Locks or unlocks the private space; the system may ask for the lock.
+  Future<void> setPrivateSpaceLocked(bool locked);
+
   /// Starts an app. False when this backend can't start apps (the mock), so
   /// the launcher shows a stand-in instead.
   Future<bool> launch(String id);

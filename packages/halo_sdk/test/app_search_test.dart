@@ -37,4 +37,30 @@ void main() {
     expect(foldForSearch('IŞIK'), 'isik');
     expect(foldForSearch('Café'), 'cafe');
   });
+
+  test('searchByLabel works on any item', () {
+    const pages = defaultSettingsPages;
+    expect(searchByLabel(pages, (p) => p.label, 'time').map((p) => p.id), [
+      'datetime',
+    ]);
+    expect(
+      searchByLabel(pages, (p) => p.label, 'wi').map((p) => p.id).first,
+      'wifi',
+    );
+  });
+
+  test('settings page ids are unique', () {
+    final ids = defaultSettingsPages.map((p) => p.id).toList();
+    expect(ids.toSet(), hasLength(ids.length));
+  });
+
+  test('contact initials', () {
+    expect(const ContactResult(id: '1', name: 'Mira Okafor').initials, 'MO');
+    expect(const ContactResult(id: '2', name: 'elif').initials, 'E');
+    expect(
+      const ContactResult(id: '3', name: ' Ahmet Can Yılmaz ').initials,
+      'AC',
+    );
+    expect(const ContactResult(id: '4', name: '').initials, '');
+  });
 }

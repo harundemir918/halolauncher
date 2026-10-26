@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'app_search.dart';
 import 'backend.dart';
 import 'models.dart';
+import 'settings_pages.dart';
 
 /// Fixtures that reuse the copy from the designs (design/screens/) so golden
 /// tests line up: Friday 23 October, 09:41, Design review in Room 3, Elif.
@@ -259,6 +261,55 @@ class MockBackend implements HaloBackend {
 
   @override
   Future<void> uninstall(String appId) async => uninstallRequests.add(appId);
+
+  @override
+  List<SettingsPage> get settingsPages => defaultSettingsPages;
+
+  /// Settings page ids the mock was asked to open, in order.
+  final settingsRequests = <String>[];
+
+  @override
+  Future<void> openSettingsPage(String id) async => settingsRequests.add(id);
+
+  bool _contacts = true;
+
+  /// Contact search allowed. Tests turn it off to see the ask.
+  set canSearchContacts(bool value) {
+    _contacts = value;
+    _changes.add(null);
+  }
+
+  @override
+  bool get canSearchContacts => _contacts;
+
+  /// How often the mock was asked for the contacts permission.
+  var contactsRequests = 0;
+
+  @override
+  Future<void> requestContactsAccess() async => contactsRequests++;
+
+  static const _contactsFixture = [
+    ContactResult(id: 'elif', name: 'Elif'),
+    ContactResult(id: 'deniz', name: 'Deniz'),
+    ContactResult(id: 'mira', name: 'Mira Okafor'),
+  ];
+
+  @override
+  Future<List<ContactResult>> searchContacts(String query) async => _contacts
+      ? searchByLabel(_contactsFixture, (c) => c.name, query)
+      : const [];
+
+  /// Contact ids the mock was asked to open, in order.
+  final contactRequests = <String>[];
+
+  @override
+  Future<void> openContact(String id) async => contactRequests.add(id);
+
+  @override
+  PrivateSpaceState get privateSpace => PrivateSpaceState.none;
+
+  @override
+  Future<void> setPrivateSpaceLocked(bool locked) async {}
 
   late final List<HaloNotification> _notifications = [
     HaloNotification(

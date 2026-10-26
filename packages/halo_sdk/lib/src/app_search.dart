@@ -1,28 +1,36 @@
 import 'models.dart';
 
-/// Apps whose label matches [query], best first: the label starts with it,
+/// Apps whose label matches [query], best first (see [searchByLabel]).
+List<HaloAppInfo> searchApps(Iterable<HaloAppInfo> apps, String query) =>
+    searchByLabel(apps, (a) => a.label, query);
+
+/// Items whose label matches [query], best first: the label starts with it,
 /// then a word in the label does, then it appears anywhere. Case and Latin
 /// accents (Turkish included) are ignored. An empty query matches nothing.
-List<HaloAppInfo> searchApps(Iterable<HaloAppInfo> apps, String query) {
+/// Within a rank the input order is kept.
+List<T> searchByLabel<T>(
+  Iterable<T> items,
+  String Function(T) labelOf,
+  String query,
+) {
   final q = foldForSearch(query.trim());
   if (q.isEmpty) return const [];
-  final ranked = <(int, HaloAppInfo)>[];
-  for (final a in apps) {
-    final label = foldForSearch(a.label);
+  final ranked = <(int, T)>[];
+  for (final item in items) {
+    final label = foldForSearch(labelOf(item));
     final rank = label.startsWith(q)
         ? 0
-        : label.split(RegExp(r'[\s\-_.·]+')).any((w) => w.startsWith(q))
+        : label.split(RegExp(r'[\s\-_.·&]+')).any((w) => w.startsWith(q))
         ? 1
         : label.contains(q)
         ? 2
         : -1;
-    if (rank >= 0) ranked.add((rank, a));
+    if (rank >= 0) ranked.add((rank, item));
   }
-  // Stable: within a rank, keep the input order (apps come by label).
   return [
     for (var r = 0; r <= 2; r++)
-      for (final (rank, a) in ranked)
-        if (rank == r) a,
+      for (final (rank, item) in ranked)
+        if (rank == r) item,
   ];
 }
 
