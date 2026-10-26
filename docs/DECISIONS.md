@@ -97,8 +97,10 @@ The system Overview belongs to the system launcher; third-party launchers can't 
 Android owns the bottom edge (home and Overview), the side edges (back) and the top edge (the notification shade). The desktop edge swipes (top left Stream, top right Switchboard, bottom Home/Recents) work today inside the launcher window, but the system takes most edge swipes first under gesture navigation. Options: swipes started away from the edges (down in the upper half of Home for Stream/Switchboard, up from the arc for Recents), or on-screen affordances.
 *2026-10-26:* on Android, an up swipe from the arc band or the bottom edge of Home opens Apps (D-026); Recents has no Android route until Phase 6.
 
-## D-024 · System bars and the design frame. **Proposed** (2026-10-26), interim
-The launcher draws edge to edge behind transparent system bars, and lays out the 390-wide design frame inside the safe area, scaled by width (`launcher/lib/design_frame.dart`). The shell's own status row stays for now, so time and battery show twice. The owner decides whether to hide the system status bar on Home or drop the shell's status row (ROADMAP open question).
+## D-024 · System bars, the design frame and Halo's status row. **Decided** (2026-10-26): the status row; **Proposed**: the frame
+The launcher draws edge to edge behind transparent system bars, and lays out the 390-wide design frame inside the safe area, scaled by width (`launcher/lib/design_frame.dart`).
+*Status row, decided by the owner:* Android's status bar stays and shows the time and the battery, so Halo's row no longer repeats them. Its left side is `STREAM` and its right side `SWITCHBOARD`, and tapping one opens that screen. A Flare dot before `STREAM` means something is unread; the screen shown is Volt. The 3 px battery line across the very top stays. Lock keeps its own `LOCKED` row.
+*History:* first both rows showed, so the time and battery appeared twice.
 
 ## D-025 · App icons on the arc: like `home.png`. **Decided** (2026-10-26)
 The owner chose the design's look for every app on the arc, not only the focused one: a bone glyph on a `surface` circle, and the focused app a Volt circle with the glyph in carbon. No color icons on the arc.

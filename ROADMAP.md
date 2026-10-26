@@ -62,6 +62,9 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - ☑ Tap Ask Halo: search opens with the keyboard up ("find anything": apps, contacts, settings) (D-027)
 - ☑ Long press: the assistant the user picked in Android, if any; Halo has no AI of its own (D-012)
 
+## Phase 3c: Status row ☑
+- ☑ Halo's status row no longer repeats Android's time, date and battery: `STREAM` (with a Flare dot while something is unread) and `SWITCHBOARD`, each opening its screen; the battery line stays (D-024)
+
 ## Phase 4: Calendar and notifications
 - ☐ Calendar via `CalendarContract` (`READ_CALENDAR`): Home "NOW", the `TODAY` agenda and the next-event card
 - ☐ `NotificationListenerService` with an onboarding flow for the special access grant
@@ -112,7 +115,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - **Lock (D-021):** Android doesn't let a launcher replace the keyguard. Options: an at-a-glance page left of Home, the screen shown right after unlock, or drop it.
 - **Recents (D-022):** the system recents (Overview) belongs to the system launcher; third-party launchers can't show live task surfaces or close tasks. Halo's Recents is a recently used apps view; should the system Overview still be reachable?
 - **Gestures (D-023):** Android owns the bottom edge (home, Overview) and the side edges (back), and the top edge opens the system shade. Halo's edge swipes need new homes: swipes inside Home (down on the upper area for Stream/Switchboard, up on the arc for Recents) or on-screen affordances.
-- **Status bar (D-024):** keep the system status bar, or hide it on Home and draw the Halo `StatusRow` instead. Today both show, so time and battery appear twice.
+- **Status bar (D-024):** decided: Android's status bar shows the time and battery; Halo's row leads to Stream and Switchboard.
 - **Wallpaper:** "no glass" means the launcher draws its own opaque background. Ignore the system wallpaper, or offer Halo backgrounds only?
 - **Apps view (D-026):** built as a list reached by an up swipe on the arc. Still open: the gesture, how much Volt the list carries, and drag-to-reorder on the arc.
 - **Min SDK (D-018):** proposed Android 10 (API 29); the code uses 29.

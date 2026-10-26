@@ -173,7 +173,7 @@ Blocks have a **large top-left radius** and small radii on the other three corne
 
 - Reference frame: 390 × 844. Lay out for that frame and scale by width class. Don't hard-code absolute positions in production widgets.
 - Screen gutter: **24 px** left and right.
-- Status row: top 16 px, DM Mono 12–13. Time and date on the left (`09:41 FRI 23.10`, time in bone 500 and date in ash). Network and battery on the right (`5G · WI-FI · 82%`).
+- Status row: top 16 px, DM Mono 12–13. The designs show time and date on the left (`09:41 FRI 23.10`) and network and battery on the right (`5G · WI-FI · 82%`). In the launcher, Android's status bar shows those, so the row holds `STREAM` (left, with a Flare dot while something is unread) and `SWITCHBOARD` (right), in bone 500, Volt for the screen shown; each opens its screen (D-024). Lock keeps the designed row.
 - **Battery line**: a 3 px bar across the very top of every screen. The `line10` track is filled with Volt to the battery percentage. This is Halo's battery indicator, so don't add a separate battery icon.
 - List rows: 13–16 px vertical padding with `line10` hairline dividers.
 - Common gaps: 4, 6, 8, 12, 14, 18 px.
