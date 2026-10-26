@@ -305,6 +305,15 @@ class MockBackend implements HaloBackend {
   @override
   Future<void> openContact(String id) async => contactRequests.add(id);
 
+  /// How often the mock was asked to open the system assistant.
+  var assistantRequests = 0;
+
+  @override
+  Future<bool> openAssistant() async {
+    assistantRequests++;
+    return false;
+  }
+
   @override
   PrivateSpaceState get privateSpace => PrivateSpaceState.none;
 

@@ -81,6 +81,10 @@ abstract interface class HaloBackend {
 
   Future<void> openContact(String id);
 
+  /// Opens the assistant the user picked in the system (none is fine). Halo
+  /// has no assistant of its own (D-012). False when there is none.
+  Future<bool> openAssistant();
+
   PrivateSpaceState get privateSpace;
 
   /// Locks or unlocks the private space; the system may ask for the lock.

@@ -128,6 +128,12 @@ void main() {
       expect(b.contactRequests, ['elif']);
     });
 
+    test('the mock has no assistant but records the ask', () async {
+      final b = MockBackend();
+      expect(await b.openAssistant(), isFalse);
+      expect(b.assistantRequests, 1);
+    });
+
     test('no private space', () {
       expect(MockBackend().privateSpace, PrivateSpaceState.none);
     });
