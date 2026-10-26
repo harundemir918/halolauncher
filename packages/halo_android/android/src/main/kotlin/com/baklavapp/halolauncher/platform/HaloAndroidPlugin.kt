@@ -2,15 +2,25 @@ package com.baklavapp.halolauncher.platform
 
 import android.Manifest
 import android.app.Activity
+import android.app.ActivityOptions
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.RemoteInput
 import android.content.ActivityNotFoundException
 import android.content.ContentResolver
 import android.app.role.RoleManager
 import android.content.BroadcastReceiver
+import android.content.ContentUris
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.database.ContentObserver
+import android.media.MediaMetadata
+import android.media.session.MediaController
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
@@ -31,6 +41,9 @@ import android.os.Looper
 import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
+import android.app.Notification
+import android.os.SystemClock
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Settings
@@ -52,7 +65,9 @@ import java.util.concurrent.Executors
  * `halo_android/events` as `{"type": ...}` maps:
  * `apps` (installed apps or a profile's lock changed), `home` (Home pressed),
  * `battery`, `defaultHome` (the default home app may have changed),
- * `contacts` (the contacts permission was answered).
+ * `contacts` (the contacts permission was answered), `calendar` (events or
+ * the calendar permission changed), `notifications` (posted, removed, or
+ * access changed), `media` (the playing session changed).
  *
  * An app id is the short flattened component name, with `#<user serial>`
  * appended for apps in another profile (work).
@@ -96,6 +111,10 @@ class HaloAndroidPlugin :
 
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = emit("battery")
+    }
+
+    private val calendarObserver = object : ContentObserver(main) {
+        override fun onChange(selfChange: Boolean) = emit("calendar")
     }
 
     // A work profile paused or resumed, a private space locked or unlocked.
@@ -159,8 +178,11 @@ class HaloAndroidPlugin :
         permissions: Array<out String>,
         grantResults: IntArray,
     ): Boolean {
-        if (requestCode != REQUEST_CONTACTS) return false
-        emit("contacts")
+        when (requestCode) {
+            REQUEST_CONTACTS -> emit("contacts")
+            REQUEST_CALENDAR -> emit("calendar")
+            else -> return false
+        }
         return true
     }
 
@@ -183,12 +205,23 @@ class HaloAndroidPlugin :
         } else {
             context.registerReceiver(profileReceiver, profiles)
         }
+        context.contentResolver.registerContentObserver(CalendarContract.CONTENT_URI, true, calendarObserver)
+        HaloNotificationService.onChange = {
+            main.post {
+                emit("notifications")
+                watchMedia()
+            }
+        }
+        watchMedia()
     }
 
     override fun onCancel(arguments: Any?) {
         launcherApps.unregisterCallback(appsCallback)
         context.unregisterReceiver(batteryReceiver)
         context.unregisterReceiver(profileReceiver)
+        context.contentResolver.unregisterContentObserver(calendarObserver)
+        HaloNotificationService.onChange = null
+        unwatchMedia()
         sink = null
     }
 
@@ -241,6 +274,40 @@ class HaloAndroidPlugin :
                 result.success(null)
             }
             "openAssistant" -> result.success(openAssistant())
+            "canReadCalendar" -> result.success(canReadCalendar())
+            "requestCalendar" -> {
+                requestCalendar()
+                result.success(null)
+            }
+            "agenda" -> worker.execute {
+                val events = agenda()
+                main.post { result.success(events) }
+            }
+            "canReadNotifications" -> result.success(canReadNotifications())
+            "requestNotificationAccess" -> {
+                requestNotificationAccess()
+                result.success(null)
+            }
+            "notifications" -> result.success(notifications())
+            "openNotification" -> result.success(openNotification(call.argument<String>("id")))
+            "dismissNotification" -> {
+                notification(call.argument<String>("id"))?.let { HaloNotificationService.current?.cancelNotification(it.key) }
+                result.success(null)
+            }
+            "snoozeNotification" -> {
+                notification(call.argument<String>("id"))?.let {
+                    HaloNotificationService.current?.snoozeNotification(it.key, SNOOZE_MS)
+                }
+                result.success(null)
+            }
+            "replyNotification" -> result.success(
+                replyNotification(call.argument<String>("id"), call.argument<String>("text").orEmpty()),
+            )
+            "media" -> result.success(media())
+            "setPlaying" -> {
+                setPlaying(call.argument<Boolean>("playing") ?: false)
+                result.success(null)
+            }
             "privateSpace" -> result.success(privateSpaceState())
             "setPrivateSpaceLocked" -> {
                 setPrivateSpaceLocked(call.argument<Boolean>("locked") ?: true)
@@ -451,6 +518,302 @@ class HaloAndroidPlugin :
             }
         }
         return false
+    }
+
+    // Calendar
+
+    private fun canReadCalendar(): Boolean =
+        context.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+
+    private fun requestCalendar() {
+        val host: Activity = activity?.activity ?: return
+        val askedBefore = prefs.getBoolean("askedCalendar", false)
+        if (askedBefore && !host.shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR)) {
+            host.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+            )
+            return
+        }
+        prefs.edit().putBoolean("askedCalendar", true).apply()
+        host.requestPermissions(arrayOf(Manifest.permission.READ_CALENDAR), REQUEST_CALENDAR)
+    }
+
+    /**
+     * Today's timed events from visible calendars, in time order: start
+     * (epoch ms), title, location, and attendee count when there are guests.
+     * All-day events are left out for now; they have no time for the agenda.
+     */
+    private fun agenda(): List<Map<String, Any?>> {
+        if (!canReadCalendar()) return emptyList()
+        val day = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val start = day.timeInMillis
+        val end = start + 24 * 60 * 60 * 1000L
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, start)
+            ContentUris.appendId(it, end)
+        }.build()
+        val projection = arrayOf(
+            CalendarContract.Instances.EVENT_ID,
+            CalendarContract.Instances.TITLE,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.EVENT_LOCATION,
+            CalendarContract.Instances.ALL_DAY,
+        )
+        return try {
+            context.contentResolver.query(
+                uri,
+                projection,
+                "${CalendarContract.Instances.VISIBLE} = 1",
+                null,
+                "${CalendarContract.Instances.BEGIN} ASC",
+            )?.use { c ->
+                buildList {
+                    while (c.moveToNext()) {
+                        if (c.getInt(4) == 1) continue
+                        val begin = c.getLong(2)
+                        if (begin < start || begin >= end) continue
+                        add(
+                            mapOf(
+                                "start" to begin,
+                                "title" to (c.getString(1) ?: ""),
+                                "location" to (c.getString(3) ?: ""),
+                                "attendees" to attendees(c.getLong(0)),
+                            ),
+                        )
+                    }
+                }
+            }.orEmpty()
+        } catch (e: SecurityException) {
+            emptyList()
+        }
+    }
+
+    /** Guests on an event, or null when it has none. */
+    private fun attendees(eventId: Long): Int? =
+        context.contentResolver.query(
+            CalendarContract.Attendees.CONTENT_URI,
+            arrayOf(CalendarContract.Attendees._ID),
+            "${CalendarContract.Attendees.EVENT_ID} = ?",
+            arrayOf(eventId.toString()),
+            null,
+        )?.use { it.count.takeIf { n -> n > 1 } }
+
+    // Notifications
+
+    private val listener: ComponentName get() = ComponentName(context, HaloNotificationService::class.java)
+
+    private fun canReadNotifications(): Boolean =
+        context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(listener)
+
+    private fun requestNotificationAccess() {
+        val intent = if (Build.VERSION.SDK_INT >= 30) {
+            Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener.flattenToString())
+        } else {
+            Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        }
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            context.startActivity(
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
+
+    private fun notification(key: String?) =
+        HaloNotificationService.current?.activeNotifications?.firstOrNull { it.key == key }
+
+    private fun replyAction(n: Notification): Notification.Action? =
+        n.actions?.firstOrNull { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true }
+
+    /**
+     * What Stream shows: the phone's notifications, newest first, minus Halo's
+     * own, ongoing ones (music, calls in progress, downloads) and group
+     * summaries that only stand for their children.
+     */
+    private fun notifications(): List<Map<String, Any?>> {
+        val service = HaloNotificationService.current ?: return emptyList()
+        val labels = HashMap<String, String>()
+        fun label(pkg: String) = labels.getOrPut(pkg) {
+            try {
+                context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg, 0)).toString()
+            } catch (e: PackageManager.NameNotFoundException) {
+                pkg
+            }
+        }
+        val active = try {
+            service.activeNotifications.orEmpty()
+        } catch (e: SecurityException) {
+            return emptyList()
+        }
+        return active
+            .filter { it.packageName != context.packageName && !it.isOngoing }
+            .filter { it.notification.flags and Notification.FLAG_GROUP_SUMMARY == 0 }
+            .mapNotNull { sbn ->
+                val n = sbn.notification
+                val extras = n.extras
+                val title = (
+                    extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)
+                        ?: extras.getCharSequence(Notification.EXTRA_TITLE)
+                    )?.toString()?.trim().orEmpty()
+                val text = (
+                    extras.getCharSequence(Notification.EXTRA_BIG_TEXT)
+                        ?: extras.getCharSequence(Notification.EXTRA_TEXT)
+                    )?.toString()?.trim().orEmpty()
+                if (title.isEmpty() && text.isEmpty()) return@mapNotNull null
+                mapOf(
+                    "id" to sbn.key,
+                    "package" to sbn.packageName,
+                    "app" to label(sbn.packageName),
+                    "title" to title,
+                    "text" to text,
+                    "postTime" to sbn.postTime,
+                    "canReply" to (replyAction(n) != null),
+                    "canDismiss" to sbn.isClearable,
+                )
+            }
+            .sortedByDescending { it["postTime"] as Long }
+    }
+
+    /** Sends the notification's tap action and clears it if it should go. */
+    private fun openNotification(key: String?): Boolean {
+        val sbn = notification(key) ?: return false
+        val intent = sbn.notification.contentIntent ?: return false
+        return try {
+            sendAllowingActivityStart(intent, null)
+            if (sbn.notification.flags and Notification.FLAG_AUTO_CANCEL != 0) {
+                HaloNotificationService.current?.cancelNotification(sbn.key)
+            }
+            true
+        } catch (e: PendingIntent.CanceledException) {
+            false
+        }
+    }
+
+    /** Fills the reply action's free-form input with [text] and sends it. */
+    private fun replyNotification(key: String?, text: String): Boolean {
+        if (text.isBlank()) return false
+        val sbn = notification(key) ?: return false
+        val action = replyAction(sbn.notification) ?: return false
+        val inputs = action.remoteInputs ?: return false
+        val results = Bundle().apply { inputs.forEach { putCharSequence(it.resultKey, text) } }
+        val fill = Intent()
+        RemoteInput.addResultsToIntent(inputs, fill, results)
+        RemoteInput.setResultsSource(fill, RemoteInput.SOURCE_FREE_FORM_INPUT)
+        return try {
+            sendAllowingActivityStart(action.actionIntent, fill)
+            true
+        } catch (e: PendingIntent.CanceledException) {
+            false
+        }
+    }
+
+    /**
+     * Halo is in front when the user taps, so it lends its right to start an
+     * activity to the app's PendingIntent (required from Android 14).
+     */
+    private fun sendAllowingActivityStart(intent: PendingIntent, fill: Intent?) {
+        val options = if (Build.VERSION.SDK_INT >= 34) {
+            ActivityOptions.makeBasic()
+                .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                .toBundle()
+        } else {
+            null
+        }
+        intent.send(context, 0, fill, null, null, null, options)
+    }
+
+    // Media sessions (they need notification access)
+
+    private val sessions: MediaSessionManager get() = context.getSystemService(MediaSessionManager::class.java)
+    private val watched = mutableListOf<MediaController>()
+
+    private val mediaCallback = object : MediaController.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackState?) = emit("media")
+        override fun onMetadataChanged(metadata: MediaMetadata?) = emit("media")
+        override fun onSessionDestroyed() = emit("media")
+    }
+
+    private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener {
+        rewatch(it.orEmpty())
+        emit("media")
+    }
+
+    private fun watchMedia() {
+        unwatchMedia()
+        if (!canReadNotifications()) return
+        try {
+            sessions.addOnActiveSessionsChangedListener(sessionsListener, listener, main)
+            rewatch(sessions.getActiveSessions(listener))
+        } catch (e: SecurityException) {
+            // Access was just revoked.
+        }
+    }
+
+    private fun unwatchMedia() {
+        try {
+            sessions.removeOnActiveSessionsChangedListener(sessionsListener)
+        } catch (e: Exception) {
+            // Never added.
+        }
+        watched.forEach { it.unregisterCallback(mediaCallback) }
+        watched.clear()
+    }
+
+    private fun rewatch(controllers: List<MediaController>) {
+        watched.forEach { it.unregisterCallback(mediaCallback) }
+        watched.clear()
+        controllers.forEach {
+            it.registerCallback(mediaCallback, main)
+            watched.add(it)
+        }
+    }
+
+    /** The playing session, else the first one with something loaded. */
+    private fun currentController(): MediaController? {
+        val list = try {
+            if (!canReadNotifications()) return null
+            sessions.getActiveSessions(listener)
+        } catch (e: SecurityException) {
+            return null
+        }
+        return list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+            ?: list.firstOrNull { it.metadata != null }
+    }
+
+    private fun media(): Map<String, Any?>? {
+        val c = currentController() ?: return null
+        val meta = c.metadata ?: return null
+        val state = c.playbackState
+        val duration = meta.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        // Where it is now: the last reported position plus what has played since.
+        val position = state?.let {
+            if (it.state == PlaybackState.STATE_PLAYING) {
+                it.position + ((SystemClock.elapsedRealtime() - it.lastPositionUpdateTime) * it.playbackSpeed).toLong()
+            } else {
+                it.position
+            }
+        } ?: 0L
+        return mapOf(
+            "title" to (meta.getString(MediaMetadata.METADATA_KEY_TITLE) ?: ""),
+            "artist" to (
+                meta.getString(MediaMetadata.METADATA_KEY_ARTIST)
+                    ?: meta.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST) ?: ""
+                ),
+            "progress" to if (duration > 0) (position.toDouble() / duration).coerceIn(0.0, 1.0) else 0.0,
+            "playing" to (state?.state == PlaybackState.STATE_PLAYING),
+        )
+    }
+
+    private fun setPlaying(playing: Boolean) {
+        val controls = currentController()?.transportControls ?: return
+        if (playing) controls.play() else controls.pause()
     }
 
     private fun canSearchContacts(): Boolean =
@@ -697,6 +1060,10 @@ class HaloAndroidPlugin :
     private companion object {
         const val REQUEST_DEFAULT_HOME = 0x4a10
         const val REQUEST_CONTACTS = 0x4a11
+        const val REQUEST_CALENDAR = 0x4a12
+
+        /** Stream's LATER puts a notification away for an hour. */
+        const val SNOOZE_MS = 60 * 60 * 1000L
 
         /** Mask alpha below this is dropped (see [cleanMask]). */
         const val MASK_FLOOR = 40

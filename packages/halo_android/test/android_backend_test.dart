@@ -21,6 +21,10 @@ void main() {
   final icon = Uint8List.fromList([1, 2, 3]);
   final mono = Uint8List.fromList([4, 5, 6]);
   late bool contactsAllowed;
+  late bool calendarAllowed;
+  late bool notificationsAllowed;
+  late List<Map<String, Object?>> posted;
+  Map<String, Object?>? playing;
   late String privateSpace;
 
   setUp(() {
@@ -32,6 +36,10 @@ void main() {
     prefs = {};
     defaults = ['com.b/.Main'];
     contactsAllowed = false;
+    calendarAllowed = false;
+    notificationsAllowed = false;
+    posted = [];
+    playing = null;
     privateSpace = 'none';
     calls = [];
     messenger.setMockMethodCallHandler(methods, (call) async {
@@ -65,6 +73,31 @@ void main() {
         'privateSpace' => privateSpace,
         'setPrivateSpaceLocked' => null,
         'openAssistant' => true,
+        'canReadCalendar' => calendarAllowed,
+        'agenda' => [
+          {
+            'start': DateTime(2026, 10, 26, 9).millisecondsSinceEpoch,
+            'title': 'Standup',
+            'location': 'Room 3',
+            'attendees': 4,
+          },
+          {
+            'start': DateTime(2099, 1, 1, 9).millisecondsSinceEpoch,
+            'title': 'Later',
+            'location': '',
+            'attendees': null,
+          },
+        ],
+        'canReadNotifications' => notificationsAllowed,
+        'notifications' => posted,
+        'media' => playing,
+        'requestCalendar' ||
+        'requestNotificationAccess' ||
+        'dismissNotification' ||
+        'snoozeNotification' ||
+        'setPlaying' => null,
+        'openNotification' => true,
+        'replyNotification' => (call.arguments as Map)['text'] != '',
         _ => throw MissingPluginException(),
       };
     });
@@ -338,5 +371,156 @@ void main() {
     addTearDown(b.dispose);
     expect(await b.openAssistant(), isTrue);
     expect(calls.last.method, 'openAssistant');
+  });
+
+  group('calendar', () {
+    test('nothing without the permission', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.canReadCalendar, isFalse);
+      expect(b.agenda, isEmpty);
+      expect(calls.where((c) => c.method == 'agenda'), isEmpty);
+    });
+
+    test('today\'s events, and the next one', () async {
+      calendarAllowed = true;
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.agenda.map((e) => e.title), ['Standup', 'Later']);
+      expect(b.agenda.first.attendees, 4);
+      expect(b.agenda.first.location, 'Room 3');
+      expect(b.nextEvent?.title, 'Later');
+    });
+
+    test('a calendar change reloads', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      calendarAllowed = true;
+      final changed = expectLater(b.changes, emits(null));
+      sink.success({'type': 'calendar'});
+      await changed;
+      expect(b.agenda, hasLength(2));
+    });
+  });
+
+  group('notifications', () {
+    Map<String, Object?> post(
+      String id, {
+      required int at,
+      String title = 'Elif',
+      String app = 'Messages',
+      String package = 'com.a',
+      bool canReply = false,
+    }) => {
+      'id': id,
+      'package': package,
+      'app': app,
+      'title': title,
+      'text': 'Are we still on for 7?',
+      'postTime': at,
+      'canReply': canReply,
+      'canDismiss': true,
+    };
+
+    test('nothing without access', () async {
+      posted = [post('k1', at: 10)];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.canReadNotifications, isFalse);
+      expect(b.notifications, isEmpty);
+    });
+
+    test('unread since Stream was last seen; marks by the rules', () async {
+      notificationsAllowed = true;
+      prefs['streamSeen'] = '100';
+      posted = [
+        post('new-msg', at: 300, canReply: true),
+        post(
+          'new-other',
+          at: 200,
+          title: 'Parcel',
+          app: 'Parcel',
+          package: 'p',
+        ),
+        post('old', at: 50, title: 'Deniz', canReply: true),
+      ];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      final byId = {for (final n in b.notifications) n.id: n};
+      expect(byId['new-msg']!.mark, StreamMark.current);
+      expect(byId['new-other']!.mark, StreamMark.alert);
+      expect(byId['old']!.mark, StreamMark.read);
+      expect(byId['new-msg']!.source, 'Messages · Elif');
+      expect(byId['new-msg']!.sender, 'Elif');
+      // Its app on the arc, for the unread badge.
+      expect(byId['new-msg']!.app, 'com.a/.Main');
+      expect(b.streamSummary.newCount, 2);
+      expect(b.streamSummary.needYou, ['Reply to Elif']);
+      expect(b.notifications.map((n) => n.id).last, 'old');
+    });
+
+    test('leaving Stream marks them seen, and that is saved', () async {
+      notificationsAllowed = true;
+      posted = [post('k1', at: 300, canReply: true)];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.notifications.single.unread, isTrue);
+      b.markNotificationsSeen();
+      expect(b.notifications.single.unread, isFalse);
+      await settle();
+      expect(prefs['streamSeen'], '300');
+    });
+
+    test('actions go to the platform by id', () async {
+      notificationsAllowed = true;
+      posted = [post('k1', at: 300, canReply: true)];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(await b.replyToNotification('k1', 'Yes'), isTrue);
+      expect(calls.last.arguments, {'id': 'k1', 'text': 'Yes'});
+      await b.openNotification('k1');
+      await b.dismissNotification('k1');
+      await b.snoozeNotification('k1');
+      expect(calls.map((c) => c.method).toList().sublist(calls.length - 3), [
+        'openNotification',
+        'dismissNotification',
+        'snoozeNotification',
+      ]);
+    });
+
+    test('a posted notification reloads', () async {
+      notificationsAllowed = true;
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      posted = [post('k1', at: 300)];
+      final changed = expectLater(b.changes, emits(null));
+      sink.success({'type': 'notifications'});
+      await changed;
+      expect(b.notifications, hasLength(1));
+    });
+  });
+
+  group('media', () {
+    test('the playing session is the media strip; play and pause', () async {
+      playing = {
+        'title': 'Night Drive',
+        'artist': 'Mira Okafor',
+        'progress': 0.4,
+        'playing': true,
+      };
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.quick.media?.title, 'Night Drive');
+      expect(b.quick.media?.playing, isTrue);
+      b.setPlaying(false);
+      expect(b.quick.media?.playing, isFalse);
+      expect(calls.last.arguments, {'playing': false});
+    });
+
+    test('no session, no strip', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.quick.media, isNull);
+    });
   });
 }

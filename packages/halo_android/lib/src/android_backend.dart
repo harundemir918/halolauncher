@@ -9,10 +9,11 @@ import 'package:halo_sdk/halo_sdk.dart';
 ///
 /// Serves the clock, installed apps in every profile (with icons), the arc
 /// the user keeps, launching, shortcuts, App info and uninstall, battery, the
-/// default home app and Home presses. The arc, appearance and text size are
-/// saved on the phone. Everything else is empty until its phase lands
-/// (ROADMAP): no agenda, notifications or Recents, and Switchboard holds its
-/// values only in memory. Empty, not invented (CLAUDE.md rule 1).
+/// default home app, Home presses, today's calendar, the phone's
+/// notifications and the playing media. The arc, appearance, text size and
+/// when Stream was last seen are saved on the phone. Recents is empty until
+/// Phase 6, and Switchboard's dials and toggles hold their values only in
+/// memory until Phase 5. Empty, not invented (CLAUDE.md rule 1).
 class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   AndroidBackend._();
 
@@ -36,6 +37,9 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       b._loadSettings(),
       b._loadPrivateSpace(),
       b._loadContactsAccess(),
+      b._loadCalendar(),
+      b._loadNotifications(),
+      b._loadMedia(),
     ]);
     await b._loadArc();
     b._subscription = _events.receiveBroadcastStream().listen(b._onEvent);
@@ -70,6 +74,15 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
         unawaited(_loadDefaultHome().then((_) => _notify()));
       case 'contacts':
         unawaited(_loadContactsAccess().then((_) => _notify()));
+      case 'calendar':
+        unawaited(_loadCalendar().then((_) => _notify()));
+      case 'notifications':
+        unawaited(
+          Future.wait([_loadNotifications(), _loadMedia()])
+              .then((_) => _notify()),
+        );
+      case 'media':
+        unawaited(_loadMedia().then((_) => _notify()));
       case 'home':
         _home.add(null);
     }
@@ -81,13 +94,20 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(
-        Future.wait([_loadDefaultHome(), _loadContactsAccess()])
-            .then((_) => _notify()),
+        Future.wait([
+          _loadDefaultHome(),
+          _loadContactsAccess(),
+          _loadCalendar(),
+          _loadNotifications(),
+          _loadMedia(),
+        ]).then((_) => _notify()),
       );
     }
   }
 
-  /// Rebuilds on each minute boundary so the clock stays right.
+  /// Rebuilds on each minute boundary so the clock stays right, the next
+  /// event moves on and the media progress follows; reloads the agenda when
+  /// the day changes.
   void _tickEachMinute() {
     final now = DateTime.now();
     final next = DateTime(
@@ -97,7 +117,12 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       now.hour,
       now.minute + 1,
     );
-    _clock = Timer(next.difference(now), () {
+    _clock = Timer(next.difference(now), () async {
+      final today = DateTime.now();
+      await Future.wait([
+        if (today.day != _agendaDay) _loadCalendar(),
+        if (_media != null) _loadMedia(),
+      ]);
       _notify();
       _tickEachMinute();
     });
@@ -140,6 +165,8 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           canUninstall: a['canUninstall'] as bool? ?? true,
         ),
     ];
+    // Notifications name their arc app from this list.
+    _shown = null;
     final missing = [
       for (final a in _apps)
         if (!_icons.containsKey(a.id)) a.id,
@@ -366,7 +393,8 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     _battery = (b?['level'] as num?)?.toDouble() ?? 0;
   }
 
-  // Switchboard (Phase 5): held in memory, not applied to the device yet.
+  // Switchboard: the dials and toggles are held in memory until Phase 5; the
+  // media strip is the phone's playing session.
 
   QuickSettings _quick = const QuickSettings(
     brightness: 0.5,
@@ -376,8 +404,29 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     toggles: [],
   );
 
+  MediaSession? _media;
+
   @override
-  QuickSettings get quick => _quick;
+  QuickSettings get quick => QuickSettings(
+    brightness: _quick.brightness,
+    brightnessAuto: _quick.brightnessAuto,
+    volume: _quick.volume,
+    volumeFooter: _quick.volumeFooter,
+    toggles: _quick.toggles,
+    media: _media,
+  );
+
+  Future<void> _loadMedia() async {
+    final m = await _methods.invokeMapMethod<String, Object?>('media');
+    _media = m == null
+        ? null
+        : MediaSession(
+            title: m['title'] as String? ?? '',
+            artist: m['artist'] as String? ?? '',
+            progress: (m['progress'] as num?)?.toDouble() ?? 0,
+            playing: m['playing'] as bool? ?? false,
+          );
+  }
 
   @override
   void setToggle(String id, bool on) {}
@@ -398,7 +447,14 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   }
 
   @override
-  void setPlaying(bool playing) {}
+  void setPlaying(bool playing) {
+    final m = _media;
+    if (m == null) return;
+    // Show it at once; the session's own event confirms it.
+    _media = m.copyWith(playing: playing);
+    _notify();
+    unawaited(_methods.invokeMethod<void>('setPlaying', {'playing': playing}));
+  }
 
   // System: the launcher's own settings, saved as `appearance` and `textSize`.
 
@@ -444,13 +500,42 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     _notify();
   }
 
-  // Calendar (Phase 4)
+  // Calendar
+
+  List<CalendarEvent> _agenda = const [];
+  int? _agendaDay;
+  bool _canReadCalendar = false;
 
   @override
-  List<CalendarEvent> get agenda => const [];
+  List<CalendarEvent> get agenda => _agenda;
 
   @override
-  CalendarEvent? get nextEvent => null;
+  CalendarEvent? get nextEvent => nextEventIn(_agenda, now);
+
+  @override
+  bool get canReadCalendar => _canReadCalendar;
+
+  @override
+  Future<void> requestCalendarAccess() =>
+      _methods.invokeMethod<void>('requestCalendar');
+
+  Future<void> _loadCalendar() async {
+    _canReadCalendar =
+        await _methods.invokeMethod<bool>('canReadCalendar') ?? false;
+    final list = _canReadCalendar
+        ? await _methods.invokeListMethod<Map>('agenda') ?? const []
+        : const <Map>[];
+    _agendaDay = DateTime.now().day;
+    _agenda = [
+      for (final e in list)
+        CalendarEvent(
+          start: DateTime.fromMillisecondsSinceEpoch(e['start'] as int),
+          title: e['title'] as String,
+          location: e['location'] as String,
+          attendees: e['attendees'] as int?,
+        ),
+    ];
+  }
 
   // Recents (Phase 6)
 
@@ -463,15 +548,124 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   @override
   void clearRecents() {}
 
-  // Notifications (Phase 4)
+  // Notifications
+
+  List<Map> _raw = const [];
+  bool _canReadNotifications = false;
+
+  // When the user last left Stream (epoch ms, saved as `streamSeen`). What
+  // arrived after it is unread: Android doesn't track reading.
+  int _seenAt = 0;
+
+  List<HaloNotification>? _shown;
 
   @override
-  List<HaloNotification> get notifications => const [];
+  bool get canReadNotifications => _canReadNotifications;
 
   @override
-  List<HaloNotification> get lockPreviews => const [];
+  Future<void> requestNotificationAccess() =>
+      _methods.invokeMethod<void>('requestNotificationAccess');
+
+  Future<void> _loadNotifications() async {
+    final [access, seen] = await Future.wait([
+      _methods.invokeMethod<bool>('canReadNotifications'),
+      _methods.invokeMethod<String>('getPref', {'key': 'streamSeen'}),
+    ]);
+    _canReadNotifications = access as bool? ?? false;
+    _seenAt = int.tryParse(seen as String? ?? '') ?? 0;
+    _raw = _canReadNotifications
+        ? await _methods.invokeListMethod<Map>('notifications') ?? const []
+        : const [];
+    _shown = null;
+  }
+
+  /// The arc app a notification belongs to, so its unread badge shows there.
+  String _appIdFor(String package) {
+    for (final a in _apps) {
+      if (a.id.startsWith('$package/') && !a.work) return a.id;
+    }
+    return package;
+  }
 
   @override
-  StreamSummary get streamSummary =>
-      const StreamSummary(newCount: 0, read: 0, needYou: []);
+  List<HaloNotification> get notifications => _shown ??= _build();
+
+  /// Halo's marks (D-012 rules): unread ones are in play now; the newest
+  /// unread message that can be replied to is the current one (Volt), other
+  /// unread ones are alerts (Flare), the rest read.
+  List<HaloNotification> _build() {
+    var current = false;
+    final list = <HaloNotification>[];
+    for (final r in _raw) {
+      final title = r['title'] as String;
+      final app = r['app'] as String;
+      final postTime = r['postTime'] as int;
+      final unread = postTime > _seenAt;
+      final canReply = r['canReply'] as bool? ?? false;
+      final StreamMark mark;
+      if (!unread) {
+        mark = StreamMark.read;
+      } else if (canReply && !current) {
+        current = true;
+        mark = StreamMark.current;
+      } else {
+        mark = StreamMark.alert;
+      }
+      list.add(
+        HaloNotification(
+          id: r['id'] as String,
+          app: _appIdFor(r['package'] as String),
+          sender: title.isNotEmpty ? title : app,
+          source: title.isNotEmpty ? '$app · $title' : app,
+          body: r['text'] as String,
+          receivedAt: DateTime.fromMillisecondsSinceEpoch(postTime),
+          unread: unread,
+          mark: mark,
+          canReply: canReply,
+          canDismiss: r['canDismiss'] as bool? ?? true,
+        ),
+      );
+    }
+    // Stream order: in play first, then earlier, newest first within each.
+    return [...list.where((n) => n.unread), ...list.where((n) => !n.unread)];
+  }
+
+  @override
+  List<HaloNotification> get lockPreviews => previewsOf(notifications);
+
+  @override
+  StreamSummary get streamSummary => summaryOf(notifications);
+
+  @override
+  Future<void> openNotification(String id) =>
+      _methods.invokeMethod<bool>('openNotification', {'id': id});
+
+  @override
+  Future<void> dismissNotification(String id) =>
+      _methods.invokeMethod<void>('dismissNotification', {'id': id});
+
+  @override
+  Future<bool> replyToNotification(String id, String text) async =>
+      await _methods.invokeMethod<bool>('replyNotification', {
+        'id': id,
+        'text': text,
+      }) ??
+      false;
+
+  @override
+  Future<void> snoozeNotification(String id) =>
+      _methods.invokeMethod<void>('snoozeNotification', {'id': id});
+
+  @override
+  void markNotificationsSeen() {
+    final latest = _raw.fold<int>(
+      _seenAt,
+      (m, r) => (r['postTime'] as int) > m ? r['postTime'] as int : m,
+    );
+    if (latest == _seenAt) return;
+    _seenAt = latest;
+    _shown = null;
+    _savePref('streamSeen', '$latest');
+    _notify();
+  }
 }

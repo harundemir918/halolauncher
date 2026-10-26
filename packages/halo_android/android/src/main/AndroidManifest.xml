@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Android 15: lets the default home app see the private space. -->
     <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
+    <!-- Optional: today's events on Home, asked for from Home. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
 
     <!-- Package visibility (Android 11+). -->
     <queries>
@@ -33,4 +35,18 @@
             <action android:name="android.intent.action.DIAL" />
         </intent>
     </queries>
+
+    <application>
+        <!-- Stream's notifications and the Switchboard media strip. The user
+             grants it in Settings > Notification access. -->
+        <service
+            android:name=".HaloNotificationService"
+            android:exported="true"
+            android:label="Halo"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+    </application>
 </manifest>
