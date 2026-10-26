@@ -168,6 +168,8 @@ class _HaloLauncherState extends State<HaloLauncher> {
               onPopInvokedWithResult: (didPop, _) => _back(),
               child: Scaffold(
                 backgroundColor: context.halo.ground,
+                // The keyboard shortens the design frame instead (DesignFrame).
+                resizeToAvoidBottomInset: false,
                 body: DesignFrame(
                   child: Stack(
                     children: [

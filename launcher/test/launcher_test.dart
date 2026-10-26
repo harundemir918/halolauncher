@@ -125,6 +125,44 @@ void main() {
       expect(padding, EdgeInsets.zero);
     });
 
+    testWidgets('the keyboard shortens the frame, never shrinks it', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.625;
+      tester.view.padding = const FakeViewPadding(top: 63, bottom: 63);
+      // A keyboard about 330 logical high.
+      tester.view.viewInsets = const FakeViewPadding(bottom: 866);
+      addTearDown(tester.view.reset);
+      late Size seen;
+      await tester.pumpWidget(
+        DesignFrame(
+          child: Builder(
+            builder: (context) {
+              seen = MediaQuery.sizeOf(context);
+              return const SizedBox.expand();
+            },
+          ),
+        ),
+      );
+      expect(seen.width, 390);
+      // (914.3 - 24 - 329.9) logical at a scale of 411.4 / 390.
+      expect(seen.height, closeTo(531.2, 0.5));
+      // Same scale as without the keyboard: full width on screen.
+      expect(
+        tester.getRect(find.byType(SizedBox).last).width,
+        closeTo(411.4, 0.5),
+      );
+    });
+
+    testWidgets('the launcher does not resize for the keyboard', (
+      tester,
+    ) async {
+      await pumpLauncher(tester, PhoneBackend(), start: 'apps');
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(scaffold.resizeToAvoidBottomInset, isFalse);
+    });
+
     testWidgets('changes nothing at 390 × 844 without insets', (tester) async {
       tester.view.physicalSize = const Size(780, 1688);
       tester.view.devicePixelRatio = 2;
