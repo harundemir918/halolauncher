@@ -283,6 +283,31 @@ void main() {
     expect(other, findsOneWidget);
   });
 
+  testWidgets('Switchboard dials follow a vertical drag inside the launcher', (
+    tester,
+  ) async {
+    final b = PhoneBackend();
+    await pumpLauncher(tester, b, start: 'switchboard');
+    final ring = tester.getRect(
+      find.descendant(
+        of: find.byType(HaloDial).first,
+        matching: find.byType(CustomPaint),
+      ),
+    );
+    // Down the right side of the Light ring: the moves are mostly vertical,
+    // which the edge swipes used to take.
+    final g = await tester.startGesture(ring.topLeft + const Offset(122, 30));
+    for (var y = 30.0; y <= 110; y += 8) {
+      await g.moveTo(ring.topLeft + Offset(122, y));
+      await tester.pump();
+    }
+    await g.up();
+    await tester.pump();
+    expect(b.quick.brightness, closeTo(0.33, 0.08));
+    expect(b.quick.brightnessAuto, isFalse);
+    expect(find.byType(SwitchboardScreen), findsOneWidget);
+  });
+
   group('status row', () {
     testWidgets('STREAM opens the Stream, SWITCHBOARD the Switchboard', (
       tester,
