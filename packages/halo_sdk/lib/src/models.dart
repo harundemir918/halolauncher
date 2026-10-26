@@ -111,6 +111,7 @@ class HaloAppInfo {
     required this.label,
     this.icon,
     this.monoIcon,
+    this.glyph,
     this.work = false,
     this.privateSpace = false,
     this.canUninstall = true,
@@ -125,9 +126,15 @@ class HaloAppInfo {
   /// the launcher draws a Halo glyph.
   final Uint8List? icon;
 
-  /// The icon's monochrome layer (Android 13+ themed icons) as a PNG alpha
-  /// mask, when the app has one. The arc tints it carbon on Volt when focused.
+  /// A monochrome version of the icon as a PNG alpha mask: the icon's own
+  /// monochrome layer (Android 13+) or one derived from it. The arc tints it
+  /// like the design's glyphs: bone, or carbon on Volt when focused.
   final Uint8List? monoIcon;
+
+  /// The design glyph for the role this app fills, when it is the user's
+  /// default for one (`maps`, `music`, `messages`, `camera`, `web`, `phone`).
+  /// The arc draws such apps with the design's own glyph (D-025).
+  final String? glyph;
 
   /// Installed in the work profile.
   final bool work;
@@ -143,6 +150,7 @@ class HaloAppInfo {
     label: label,
     icon: icon,
     monoIcon: monoIcon,
+    glyph: glyph,
     work: work,
     privateSpace: privateSpace,
     canUninstall: canUninstall,
