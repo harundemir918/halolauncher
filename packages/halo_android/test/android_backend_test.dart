@@ -64,6 +64,7 @@ void main() {
         ],
         'privateSpace' => privateSpace,
         'setPrivateSpaceLocked' => null,
+        'openAssistant' => true,
         _ => throw MissingPluginException(),
       };
     });
@@ -330,5 +331,12 @@ void main() {
     await settle();
     // Icons keep the glyph.
     expect(b.apps.firstWhere((a) => a.id == 'com.b/.Main').glyph, 'messages');
+  });
+
+  test('the system assistant goes to the platform', () async {
+    final b = await AndroidBackend.create();
+    addTearDown(b.dispose);
+    expect(await b.openAssistant(), isTrue);
+    expect(calls.last.method, 'openAssistant');
   });
 }

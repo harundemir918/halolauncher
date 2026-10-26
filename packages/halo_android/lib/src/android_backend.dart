@@ -317,6 +317,10 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   Future<void> openContact(String id) =>
       _methods.invokeMethod<void>('openContact', {'id': id});
 
+  @override
+  Future<bool> openAssistant() async =>
+      await _methods.invokeMethod<bool>('openAssistant') ?? false;
+
   // Private space (Android 15+)
 
   PrivateSpaceState _privateSpace = PrivateSpaceState.none;

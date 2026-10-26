@@ -240,6 +240,7 @@ class HaloAndroidPlugin :
                 openContact(call.argument<String>("id"))
                 result.success(null)
             }
+            "openAssistant" -> result.success(openAssistant())
             "privateSpace" -> result.success(privateSpaceState())
             "setPrivateSpaceLocked" -> {
                 setPrivateSpaceLocked(call.argument<Boolean>("locked") ?: true)
@@ -433,6 +434,23 @@ class HaloAndroidPlugin :
                 continue
             }
         }
+    }
+
+    /**
+     * The assistant the user picked in Android (Settings > Apps > Default
+     * apps > Digital assistant), or the voice command app. Halo has none of
+     * its own (D-012).
+     */
+    private fun openAssistant(): Boolean {
+        for (action in listOf(Intent.ACTION_ASSIST, Intent.ACTION_VOICE_COMMAND)) {
+            try {
+                context.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return true
+            } catch (e: ActivityNotFoundException) {
+                continue
+            }
+        }
+        return false
     }
 
     private fun canSearchContacts(): Boolean =
