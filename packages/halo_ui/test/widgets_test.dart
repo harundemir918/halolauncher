@@ -770,4 +770,104 @@ void main() {
     await tester.longPress(find.byType(HaloButton));
     expect((taps, holds), (1, 1));
   });
+
+  group('HaloDial', () {
+    /// One or two dials holding their own values, under an ancestor that
+    /// listens for vertical drags, as the launcher's edge swipes do.
+    Future<List<double>> pumpDials(
+      WidgetTester tester, {
+      int count = 1,
+      List<double>? ancestorDrags,
+    }) async {
+      final values = List<double>.filled(count, 0.1);
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: HaloTheme.dark(),
+          home: Scaffold(
+            body: GestureDetector(
+              onVerticalDragUpdate: (d) => ancestorDrags?.add(d.delta.dy),
+              child: StatefulBuilder(
+                builder: (context, setState) => Row(
+                  children: [
+                    for (var i = 0; i < count; i++)
+                      Expanded(
+                        child: HaloDial(
+                          key: ValueKey('dial$i'),
+                          caption: 'Dial $i',
+                          value: values[i],
+                          footer: 'Footer',
+                          onChanged: (v) => setState(() => values[i] = v),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      return values;
+    }
+
+    /// Global position of a point on dial [i]'s ring, in ring coordinates.
+    Offset ring(WidgetTester tester, Offset local, {int i = 0}) =>
+        tester.getTopLeft(
+          find.descendant(
+            of: find.byKey(ValueKey('dial$i')),
+            matching: find.byType(CustomPaint),
+          ),
+        ) +
+        local;
+
+    testWidgets('a touch sets the value before the finger moves', (
+      tester,
+    ) async {
+      final values = await pumpDials(tester);
+      // 3 o'clock is a quarter of the way round.
+      final g = await tester.startGesture(ring(tester, const Offset(122, 66)));
+      await tester.pump();
+      expect(values[0], closeTo(0.25, 0.01));
+      await g.up();
+    });
+
+    testWidgets('a vertical drag along the ring keeps working under an '
+        'ancestor that drags vertically', (tester) async {
+      final ancestor = <double>[];
+      final values = await pumpDials(tester, ancestorDrags: ancestor);
+      final g = await tester.startGesture(ring(tester, const Offset(122, 40)));
+      // Down the right side of the ring, past 3 o'clock.
+      for (var y = 40.0; y <= 100; y += 6) {
+        await g.moveTo(ring(tester, Offset(122, y)));
+        await tester.pump();
+      }
+      await g.up();
+      expect(values[0], greaterThan(0.3));
+      expect(ancestor, isEmpty);
+    });
+
+    testWidgets('a touch at the center changes nothing', (tester) async {
+      final values = await pumpDials(tester);
+      await tester.tapAt(ring(tester, const Offset(66, 66)));
+      await tester.pump();
+      expect(values[0], 0.1);
+    });
+
+    testWidgets('two dials each follow their own finger', (tester) async {
+      final values = await pumpDials(tester, count: 2);
+      final a = await tester.startGesture(
+        ring(tester, const Offset(122, 66), i: 0),
+      );
+      final b = await tester.startGesture(
+        ring(tester, const Offset(66, 122), i: 1),
+      );
+      await tester.pump();
+      expect(values[0], closeTo(0.25, 0.01));
+      expect(values[1], closeTo(0.5, 0.01));
+      await a.up();
+      await b.up();
+    });
+  });
 }

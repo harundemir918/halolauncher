@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 import '../palette.dart';
@@ -8,11 +9,16 @@ import '../type.dart';
 
 /// Ring dial on a `surface` plate (200 high). A tick ring surrounds a track
 /// and a value arc; the value sits in the middle with a mono caption, and a
-/// mono footer is below. Drag around the ring to set the value.
+/// mono footer is below. Touch or drag around the ring to set the value.
+///
+/// The dial takes a finger the moment it lands and follows it in any
+/// direction, and a tap sets the value too. (A pan lost vertical moves to an
+/// ancestor's vertical drag, the launcher's edge swipes, which wins after a
+/// shorter slop.)
 ///
 /// [active] means the value is automatic: the arc is Volt. A manual level is
 /// bone. See docs/DESIGN_SYSTEM.md §6.
-class HaloDial extends StatelessWidget {
+class HaloDial extends StatefulWidget {
   const HaloDial({
     super.key,
     required this.caption,
@@ -33,6 +39,9 @@ class HaloDial extends StatelessWidget {
 
   static const double dialSize = 132;
 
+  /// Touches this close to the center are ignored: the angle there is noise.
+  static const double deadZone = 16;
+
   /// Maps a touch to a value: 0 at 12 o'clock, growing clockwise. Crossing
   /// the top never jumps from one end to the other.
   static double valueAt(Offset local, double previous) {
@@ -47,23 +56,81 @@ class HaloDial extends StatelessWidget {
   }
 
   @override
+  State<HaloDial> createState() => _HaloDialState();
+}
+
+class _HaloDialState extends State<HaloDial> {
+  // The ring, to turn a finger's global position into a local one.
+  final _ringKey = GlobalKey(debugLabel: 'HaloDial ring');
+
+  // The last value each finger set, so crossing 12 o'clock never jumps
+  // between the ends.
+  final _fingers = <int, double>{};
+
+  void _touch(int pointer, Offset global) {
+    final box = _ringKey.currentContext?.findRenderObject();
+    if (box is! RenderBox) return;
+    final local = box.globalToLocal(global);
+    const center = Offset(HaloDial.dialSize / 2, HaloDial.dialSize / 2);
+    if ((local - center).distance < HaloDial.deadZone) return;
+    final previous = _fingers[pointer] ?? widget.value.clamp(0.0, 1.0);
+    final v = HaloDial.valueAt(local, previous);
+    _fingers[pointer] = v;
+    widget.onChanged?.call(v);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final v = value.clamp(0.0, 1.0);
+    final onChanged = widget.onChanged;
+    final v = widget.value.clamp(0.0, 1.0);
     final percent = (v * 100).round();
     final halo = context.halo;
+    final ring = SizedBox(
+      key: _ringKey,
+      width: HaloDial.dialSize,
+      height: HaloDial.dialSize,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size.square(HaloDial.dialSize),
+            painter: _DialPainter(
+              v,
+              widget.active ? halo.dialAuto : halo.dialManual,
+              halo.ticks,
+              halo.track,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$percent',
+                style: HaloType.dialValue.copyWith(color: halo.text),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                HaloType.upper(widget.caption),
+                style: HaloType.dialCaption.copyWith(color: halo.muted),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
     return Semantics(
       slider: true,
-      label: caption,
+      label: widget.caption,
       value: '$percent%',
       increasedValue: '${(percent + 5).clamp(0, 100)}%',
       decreasedValue: '${(percent - 5).clamp(0, 100)}%',
       enabled: onChanged != null,
       onIncrease: onChanged == null
           ? null
-          : () => onChanged!((v + 0.05).clamp(0.0, 1.0)),
+          : () => onChanged((v + 0.05).clamp(0.0, 1.0)),
       onDecrease: onChanged == null
           ? null
-          : () => onChanged!((v - 0.05).clamp(0.0, 1.0)),
+          : () => onChanged((v - 0.05).clamp(0.0, 1.0)),
       child: ExcludeSemantics(
         child: Container(
           height: 200,
@@ -78,53 +145,30 @@ class HaloDial extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onPanStart: onChanged == null
-                    ? null
-                    : (d) => onChanged!(valueAt(d.localPosition, v)),
-                onPanUpdate: onChanged == null
-                    ? null
-                    : (d) => onChanged!(valueAt(d.localPosition, v)),
-                child: SizedBox(
-                  width: dialSize,
-                  height: dialSize,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CustomPaint(
-                        size: const Size.square(dialSize),
-                        painter: _DialPainter(
-                          v,
-                          active ? halo.dialAuto : halo.dialManual,
-                          halo.ticks,
-                          halo.track,
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '$percent',
-                            style: HaloType.dialValue.copyWith(
-                              color: halo.text,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            HaloType.upper(caption),
-                            style: HaloType.dialCaption.copyWith(
-                              color: halo.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+              if (onChanged == null)
+                ring
+              else
+                // The eager recognizer claims a finger the moment it lands, so
+                // an ancestor's drag can't take it; the listener follows it.
+                Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (e) => _touch(e.pointer, e.position),
+                  onPointerMove: (e) => _touch(e.pointer, e.position),
+                  onPointerUp: (e) => _fingers.remove(e.pointer),
+                  onPointerCancel: (e) => _fingers.remove(e.pointer),
+                  child: RawGestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    gestures: {
+                      EagerGestureRecognizer:
+                          GestureRecognizerFactoryWithHandlers<
+                            EagerGestureRecognizer
+                          >(EagerGestureRecognizer.new, (_) {}),
+                    },
+                    child: ring,
                   ),
                 ),
-              ),
               Text(
-                HaloType.upper(footer),
+                HaloType.upper(widget.footer),
                 style: HaloType.footer.copyWith(color: halo.muted),
               ),
             ],
