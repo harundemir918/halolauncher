@@ -44,12 +44,16 @@ class HaloArc extends StatefulWidget {
     required this.focusedIndex,
     required this.onFocus,
     required this.onLaunch,
+    this.onLongPress,
   });
 
   final List<HaloArcApp> apps;
   final int focusedIndex;
   final ValueChanged<int> onFocus;
   final ValueChanged<HaloArcApp> onLaunch;
+
+  /// A long press on any app on the arc (its menu).
+  final ValueChanged<HaloArcApp>? onLongPress;
 
   static const double radius = 190;
   static const double stepDegrees = 20;
@@ -206,10 +210,16 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
         button: true,
         label: app.unread ? '${app.label}, unread' : app.label,
         onTap: () => focused ? widget.onLaunch(app) : widget.onFocus(i),
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () => widget.onLongPress!(app),
         child: ExcludeSemantics(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => focused ? widget.onLaunch(app) : widget.onFocus(i),
+            onLongPress: widget.onLongPress == null
+                ? null
+                : () => widget.onLongPress!(app),
             child: Stack(
               clipBehavior: Clip.none,
               children: [

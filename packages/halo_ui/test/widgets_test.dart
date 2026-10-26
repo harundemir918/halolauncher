@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_ui/halo_ui.dart';
 
@@ -468,12 +467,169 @@ void main() {
       expect(focused, greaterThan(0));
     });
 
+    testWidgets('a long press reports the app', (tester) async {
+      HaloArcApp? held;
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: HaloTheme.dark(),
+          home: Scaffold(
+            body: HaloArc(
+              apps: apps(3),
+              focusedIndex: 1,
+              onFocus: (_) {},
+              onLaunch: (_) {},
+              onLongPress: (a) => held = a,
+            ),
+          ),
+        ),
+      );
+      await tester.longPress(find.byKey(const ValueKey('arc-app2')));
+      expect(held?.id, 'app2');
+    });
+
     testWidgets('survives the list shrinking under the focus', (tester) async {
       await pumpArc(tester, apps(10), focused: 9);
       await pumpArc(tester, apps(2), focused: 1);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.text('APP 1'), findsOneWidget);
+    });
+  });
+
+  group('HaloCommandField', () {
+    testWidgets('without a controller it only reports taps', (tester) async {
+      var taps = 0;
+      await pumpHalo(tester, HaloCommandField(onTap: () => taps++));
+      expect(find.byType(EditableText), findsNothing);
+      await tester.tap(find.byType(HaloCommandField));
+      expect(taps, 1);
+    });
+
+    testWidgets('with a controller it takes text and hides the placeholder', (
+      tester,
+    ) async {
+      final c = TextEditingController();
+      addTearDown(c.dispose);
+      final typed = <String>[];
+      String? submitted;
+      await pumpHalo(
+        tester,
+        HaloCommandField(
+          placeholder: 'find an app',
+          controller: c,
+          onChanged: typed.add,
+          onSubmitted: (v) => submitted = v,
+        ),
+      );
+      expect(find.text('find an app'), findsOneWidget);
+      await tester.tap(find.byType(HaloCommandField));
+      await tester.enterText(find.byType(EditableText), 'map');
+      await tester.pump();
+      expect(c.text, 'map');
+      expect(typed.last, 'map');
+      expect(find.text('find an app'), findsNothing);
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      expect(submitted, 'map');
+    });
+  });
+
+  group('HaloAppRow', () {
+    testWidgets('shows the name, tags and reports taps and long presses', (
+      tester,
+    ) async {
+      var taps = 0, holds = 0;
+      await pumpHalo(
+        tester,
+        HaloAppRow(
+          label: 'Slack',
+          icon: HaloIcons.notes,
+          work: true,
+          onArc: true,
+          onTap: () => taps++,
+          onLongPress: () => holds++,
+        ),
+      );
+      expect(find.text('Slack'), findsOneWidget);
+      expect(find.text('WORK'), findsOneWidget);
+      final onArc = tester.widget<Text>(find.text('ON ARC'));
+      expect(onArc.style!.color, HaloColors.volt);
+      await tester.tap(find.byType(HaloAppRow));
+      await tester.longPress(find.byType(HaloAppRow));
+      expect((taps, holds), (1, 1));
+      expect(tester.getSize(find.byType(HaloAppRow)).height, HaloAppRow.height);
+    });
+
+    testWidgets('no tags by default', (tester) async {
+      await pumpHalo(
+        tester,
+        const HaloAppRow(label: 'Maps', icon: HaloIcons.maps),
+      );
+      expect(find.text('WORK'), findsNothing);
+      expect(find.text('ON ARC'), findsNothing);
+    });
+  });
+
+  group('HaloLetterIndex', () {
+    testWidgets('marks the current letter Volt and picks by tap', (
+      tester,
+    ) async {
+      final picked = <String>[];
+      await pumpHalo(
+        tester,
+        SizedBox(
+          height: 300,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: HaloLetterIndex(
+              letters: const ['A', 'B', 'C'],
+              current: 'B',
+              onLetter: picked.add,
+            ),
+          ),
+        ),
+      );
+      final b = tester.widget<Text>(find.byKey(const ValueKey('index-B')));
+      expect(b.style!.color, HaloColors.volt);
+      await tester.tap(find.byKey(const ValueKey('index-C')));
+      expect(picked.last, 'C');
+    });
+  });
+
+  group('HaloMenu', () {
+    testWidgets('lists sections, skips empty ones, runs the choice', (
+      tester,
+    ) async {
+      var opened = 0;
+      await pumpHalo(
+        tester,
+        HaloMenu(
+          title: 'Messages',
+          tag: 'Work',
+          sections: [
+            HaloMenuSection(
+              label: 'Shortcuts',
+              items: [HaloMenuItem('New message', onPressed: () => opened++)],
+            ),
+            const HaloMenuSection(label: 'Empty', items: []),
+            const HaloMenuSection(
+              label: 'App',
+              items: [HaloMenuItem('Uninstall', onPressed: null)],
+            ),
+          ],
+        ),
+      );
+      expect(find.text('Messages'), findsOneWidget);
+      expect(find.text('WORK'), findsOneWidget);
+      expect(find.text('SHORTCUTS'), findsOneWidget);
+      expect(find.text('EMPTY'), findsNothing);
+      await tester.tap(find.text('New message'));
+      expect(opened, 1);
+      // Disabled rows are muted.
+      final un = tester.widget<Text>(find.text('Uninstall'));
+      expect(un.style!.color, isNot(HaloColors.bone));
     });
   });
 }
