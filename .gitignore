@@ -4,3 +4,4 @@ out/
 target/
 .dart_tool/
 build/**/*.o
+.idea/
