@@ -34,6 +34,26 @@ class ManyApps extends MockBackend {
   }
 }
 
+/// [ManyApps] with a private space holding a bank app.
+class WithPrivateSpace extends ManyApps {
+  PrivateSpaceState state = PrivateSpaceState.locked;
+  final lockRequests = <bool>[];
+
+  @override
+  PrivateSpaceState get privateSpace => state;
+
+  @override
+  List<HaloAppInfo> get apps => [
+    ...super.apps,
+    if (state == PrivateSpaceState.unlocked)
+      const HaloAppInfo(id: 'bank', label: 'Bank', privateSpace: true),
+  ];
+
+  @override
+  Future<void> setPrivateSpaceLocked(bool locked) async =>
+      lockRequests.add(locked);
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +84,22 @@ void main() {
       await tester.dragFrom(const Offset(195, 834), const Offset(0, -200));
       await tester.pumpAndSettle();
       expect(find.byType(RecentsScreen), findsOneWidget);
+    });
+
+    testWidgets('on a phone the bottom edge opens Apps too', (tester) async {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        HaloLauncher(
+          backend: MockBackend(),
+          start: 'home',
+          bottomEdgeOpensApps: true,
+        ),
+      );
+      await tester.dragFrom(const Offset(195, 834), const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppsScreen), findsOneWidget);
     });
 
     testWidgets('an up swipe higher on Home does nothing', (tester) async {
@@ -150,8 +186,8 @@ void main() {
     testWidgets('says so when nothing matches', (tester) async {
       await pumpLauncher(tester, ManyApps(), start: 'apps');
       await tester.enterText(find.byType(EditableText), 'qqq');
-      await tester.pump();
-      expect(find.text('NO APPS MATCH'), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.text('NO MATCHES'), findsOneWidget);
     });
 
     testWidgets('Go launches the best match', (tester) async {
@@ -273,6 +309,19 @@ void main() {
       );
     }, tags: 'golden');
 
+    testWidgets('search results match their golden$suffix', (tester) async {
+      final b = ManyApps();
+      if (light) b.setAppearance(Appearance.light);
+      await pumpLauncher(tester, b, start: 'apps');
+      // Messages (app), Mira Okafor (contact), Mobile network (settings).
+      await tester.enterText(find.byType(EditableText), 'm');
+      await tester.pumpAndSettle();
+      await expectLater(
+        find.byType(HaloLauncher),
+        matchesGoldenFile('goldens/apps_search$suffix.png'),
+      );
+    }, tags: 'golden');
+
     testWidgets('the app menu matches its golden$suffix', (tester) async {
       final b = ManyApps();
       if (light) b.setAppearance(Appearance.light);
@@ -285,4 +334,124 @@ void main() {
       );
     }, tags: 'golden');
   }
+
+  group('search beyond apps', () {
+    Future<void> search(WidgetTester tester, HaloBackend b, String q) async {
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.enterText(find.byType(EditableText), q);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('finds contacts with initials in a notch', (tester) async {
+      final b = ManyApps();
+      await search(tester, b, 'mira');
+      expect(find.byKey(const ValueKey('section-contacts')), findsOneWidget);
+      expect(find.text('Mira Okafor'), findsOneWidget);
+      expect(find.text('MO'), findsOneWidget);
+      await tester.tap(find.text('Mira Okafor'));
+      expect(b.contactRequests, ['mira']);
+    });
+
+    testWidgets('without the permission it asks, and explains', (tester) async {
+      final b = ManyApps()..canSearchContacts = false;
+      await search(tester, b, 'mira');
+      expect(find.text('Mira Okafor'), findsNothing);
+      expect(find.text('Search your contacts too'), findsOneWidget);
+      expect(find.text('NAMES STAY ON THIS PHONE'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('contacts-allow')));
+      expect(b.contactsRequests, 1);
+    });
+
+    testWidgets('finds settings pages and opens them', (tester) async {
+      final b = ManyApps();
+      await search(tester, b, 'batt');
+      expect(find.byKey(const ValueKey('section-settings')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('setting-battery')));
+      expect(b.settingsRequests, ['battery']);
+    });
+
+    testWidgets('apps, contacts and settings each get a heading', (
+      tester,
+    ) async {
+      // "s": Settings (app), Şikayetvar, Slack... and the Sound page.
+      await search(tester, ManyApps(), 'so');
+      expect(find.byKey(const ValueKey('section-settings')), findsOneWidget);
+      expect(find.byKey(const ValueKey('setting-sound')), findsOneWidget);
+    });
+
+    testWidgets('Go opens the best settings page when no app matches', (
+      tester,
+    ) async {
+      final b = ManyApps();
+      await search(tester, b, 'bluetooth');
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      await tester.pumpAndSettle();
+      expect(b.settingsRequests, ['bluetooth']);
+    });
+  });
+
+  group('private space', () {
+    /// Scrolls the Apps list to its end.
+    Future<void> toEnd(WidgetTester tester) async {
+      final list = find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      );
+      final position = tester.state<ScrollableState>(list).position;
+      // A lazy list only knows its true end once it has built it.
+      double? last;
+      while (last != position.maxScrollExtent) {
+        last = position.maxScrollExtent;
+        position.jumpTo(last);
+        await tester.pumpAndSettle();
+      }
+    }
+
+    testWidgets('locked: a row to unlock, no private apps', (tester) async {
+      final b = WithPrivateSpace();
+      await pumpLauncher(tester, b, start: 'apps');
+      await toEnd(tester);
+      expect(find.text('LOCKED · UNLOCK'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('private-space')));
+      expect(b.lockRequests, [false]);
+      expect(b.apps.any((a) => a.privateSpace), isFalse);
+    });
+
+    testWidgets('unlocked: private apps are tagged, the row locks', (
+      tester,
+    ) async {
+      final b = WithPrivateSpace()..state = PrivateSpaceState.unlocked;
+      await pumpLauncher(tester, b, start: 'apps');
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('row-bank')),
+          matching: find.text('PRIVATE'),
+        ),
+        findsOneWidget,
+      );
+      await toEnd(tester);
+      await tester.tap(find.byKey(const ValueKey('private-space')));
+      expect(b.lockRequests, [true]);
+    });
+
+    testWidgets('the menu tags a private app', (tester) async {
+      final b = WithPrivateSpace()..state = PrivateSpaceState.unlocked;
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.longPress(find.byKey(const ValueKey('row-bank')));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(HaloMenu),
+          matching: find.text('PRIVATE'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('no row without a private space', (tester) async {
+      await pumpLauncher(tester, ManyApps(), start: 'apps');
+      await toEnd(tester);
+      expect(find.byKey(const ValueKey('private-space')), findsNothing);
+    });
+  });
 }

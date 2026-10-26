@@ -13,3 +13,7 @@ HaloIcons iconFor(HaloAppInfo app) {
 /// The app's own icon, when the platform gave one.
 ImageProvider? imageFor(HaloAppInfo app) =>
     app.icon == null ? null : MemoryImage(app.icon!);
+
+/// The app's monochrome icon layer, when the platform gave one.
+ImageProvider? monoImageFor(HaloAppInfo app) =>
+    app.monoIcon == null ? null : MemoryImage(app.monoIcon!);

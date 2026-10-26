@@ -7,8 +7,10 @@ import '../backend_builder.dart';
 import '../status_bar.dart';
 
 /// Apps: every installed app in one list, never a grid (D-026). A command
-/// field searches; without a query the list runs A to Z with letter headings
-/// and a letter index down the right edge. Reached by swiping up on the arc.
+/// field searches apps, contacts (with the user's permission) and settings
+/// pages; without a query the list runs A to Z with letter headings and a
+/// letter index down the right edge, then the private space, if there is one.
+/// Reached by swiping up on the arc.
 class AppsScreen extends StatefulWidget {
   const AppsScreen({
     super.key,
@@ -38,6 +40,80 @@ class _AppsScreenState extends State<AppsScreen> {
   final _query = TextEditingController();
   final _scroll = ScrollController();
   String? _current;
+
+  // Contact search is asynchronous; one lookup per query.
+  String? _contactsFor;
+  Future<List<ContactResult>> _contacts = Future.value(const []);
+
+  Future<List<ContactResult>> _contactsMatching(String query) {
+    if (query != _contactsFor) {
+      _contactsFor = query;
+      _contacts = widget.backend.searchContacts(query);
+    }
+    return _contacts;
+  }
+
+  Widget _heading(String label, {Key? key}) => SizedBox(
+    height: AppsScreen.headingHeight,
+    child: Align(
+      alignment: Alignment.bottomLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: HaloKicker(
+          label,
+          key: key,
+          color: context.halo.muted,
+          square: false,
+        ),
+      ),
+    ),
+  );
+
+  /// The CONTACTS part of the results: an ask while search may not look in
+  /// the contacts, else the matches (nothing when there are none).
+  Widget _contactResults(HaloBackend b, String query) {
+    final halo = context.halo;
+    if (!b.canSearchContacts) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _heading('Contacts'),
+          HaloResultRow(
+            key: const ValueKey('contacts-allow'),
+            title: 'Search your contacts too',
+            caption: 'Allow',
+            captionSignal: true,
+            onTap: b.requestContactsAccess,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            HaloType.upper('Names stay on this phone'),
+            style: HaloType.caption.copyWith(color: halo.muted),
+          ),
+        ],
+      );
+    }
+    return FutureBuilder<List<ContactResult>>(
+      future: _contactsMatching(query),
+      builder: (context, snap) {
+        final found = snap.data ?? const <ContactResult>[];
+        if (found.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _heading('Contacts', key: const ValueKey('section-contacts')),
+            for (final c in found)
+              HaloResultRow(
+                key: ValueKey('contact-${c.id}'),
+                title: c.name,
+                initials: c.initials,
+                onTap: () => b.openContact(c.id),
+              ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -101,6 +177,7 @@ class _AppsScreenState extends State<AppsScreen> {
     icon: iconFor(a),
     image: imageFor(a),
     work: a.work,
+    privateSpace: a.privateSpace,
     onArc: onArc.contains(a.id),
     onTap: () => widget.onLaunch(a.id),
     onLongPress: () => widget.onLongPress(a),
@@ -120,40 +197,62 @@ class _AppsScreenState extends State<AppsScreen> {
 
         final Widget list;
         if (query.trim().isNotEmpty) {
-          list = results.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: Text(
-                    HaloType.upper('No apps match'),
-                    style: HaloType.kicker.copyWith(color: halo.muted),
+          final pages = searchByLabel(b.settingsPages, (p) => p.label, query);
+          list = ListView(
+            padding: const EdgeInsets.only(bottom: 24),
+            children: [
+              if (results.isNotEmpty) ...[
+                _heading('Apps', key: const ValueKey('section-apps')),
+                for (final a in results) _row(a, onArc),
+              ],
+              _contactResults(b, query),
+              if (pages.isNotEmpty) ...[
+                _heading('Settings', key: const ValueKey('section-settings')),
+                for (final p in pages)
+                  HaloResultRow(
+                    key: ValueKey('setting-${p.id}'),
+                    title: p.label,
+                    onTap: () => b.openSettingsPage(p.id),
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.only(bottom: 24),
-                  children: [for (final a in results) _row(a, onArc)],
-                );
+              ],
+              if (results.isEmpty && pages.isEmpty && b.canSearchContacts)
+                FutureBuilder<List<ContactResult>>(
+                  future: _contactsMatching(query),
+                  builder: (context, snap) =>
+                      snap.connectionState == ConnectionState.done &&
+                          (snap.data ?? const []).isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 24),
+                          child: Text(
+                            HaloType.upper('No matches'),
+                            style: HaloType.kicker.copyWith(color: halo.muted),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+            ],
+          );
         } else {
           list = ListView(
             controller: _scroll,
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               for (final (letter, group) in _shown) ...[
-                SizedBox(
-                  height: AppsScreen.headingHeight,
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: HaloKicker(
-                        letter,
-                        key: ValueKey('heading-$letter'),
-                        color: halo.muted,
-                        square: false,
-                      ),
-                    ),
+                _heading(letter, key: ValueKey('heading-$letter')),
+                for (final a in group) _row(a, onArc),
+              ],
+              if (b.privateSpace != PrivateSpaceState.none) ...[
+                _heading('Private'),
+                HaloResultRow(
+                  key: const ValueKey('private-space'),
+                  title: 'Private space',
+                  caption: b.privateSpace == PrivateSpaceState.locked
+                      ? 'Locked · unlock'
+                      : 'Lock',
+                  onTap: () => b.setPrivateSpaceLocked(
+                    b.privateSpace == PrivateSpaceState.unlocked,
                   ),
                 ),
-                for (final a in group) _row(a, onArc),
               ],
             ],
           );
@@ -199,7 +298,15 @@ class _AppsScreenState extends State<AppsScreen> {
                   onChanged: (_) => setState(() {}),
                   onSubmitted: (text) {
                     final best = searchApps(widget.backend.apps, text);
-                    if (best.isNotEmpty) widget.onLaunch(best.first.id);
+                    if (best.isNotEmpty) return widget.onLaunch(best.first.id);
+                    final pages = searchByLabel(
+                      widget.backend.settingsPages,
+                      (p) => p.label,
+                      text,
+                    );
+                    if (pages.isNotEmpty) {
+                      widget.backend.openSettingsPage(pages.first.id);
+                    }
                   },
                 ),
               ),

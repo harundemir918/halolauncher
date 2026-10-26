@@ -76,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: a.label,
                     icon: iconFor(a),
                     image: imageFor(a),
+                    monoImage: monoImageFor(a),
                     unread: unreadApps.contains(a.id),
                   ),
               ],
@@ -108,8 +109,11 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                HaloKicker('Today', color: context.halo.muted, square: false),
-                const SizedBox(height: 10),
+                // Without events there is no TODAY: "Clear for the day" says it.
+                if (b.agenda.isNotEmpty) ...[
+                  HaloKicker('Today', color: context.halo.muted, square: false),
+                  const SizedBox(height: 10),
+                ],
                 for (final e in b.agenda)
                   HaloAgendaRow(
                     time: HaloFormat.clock(e.start),

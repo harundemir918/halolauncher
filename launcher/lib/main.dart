@@ -57,15 +57,26 @@ Future<void> main() async {
           : backend is AndroidBackend
           ? 'home'
           : 'lock',
+      bottomEdgeOpensApps: backend is AndroidBackend,
     ),
   );
 }
 
 class HaloLauncher extends StatefulWidget {
-  const HaloLauncher({super.key, required this.backend, this.start = 'lock'});
+  const HaloLauncher({
+    super.key,
+    required this.backend,
+    this.start = 'lock',
+    this.bottomEdgeOpensApps = false,
+  });
 
   final HaloBackend backend;
   final String start;
+
+  /// On a phone, an up swipe from just above the system's gesture bar also
+  /// opens Apps: that is where a thumb starts, and Recents has nothing to
+  /// show on Android until Phase 6 (D-023, D-026).
+  final bool bottomEdgeOpensApps;
 
   @override
   State<HaloLauncher> createState() => _HaloLauncherState();
@@ -118,7 +129,12 @@ class _HaloLauncherState extends State<HaloLauncher> {
       EdgeZone.topRight => 'switchboard',
       EdgeZone.topLeft => 'stream',
       // Up from the bottom: Home, and from Home, Recents.
-      EdgeZone.bottom => _screen == 'home' ? 'recents' : 'home',
+      EdgeZone.bottom =>
+        _screen != 'home'
+            ? 'home'
+            : widget.bottomEdgeOpensApps
+            ? 'apps'
+            : 'recents',
       EdgeZone.lowerArea => 'apps',
     };
   });

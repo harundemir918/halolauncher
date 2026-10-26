@@ -258,6 +258,17 @@ void main() {
     // Seven apps: the middle one, Messages, not the first.
     expect(find.text('MESSAGES'), findsOneWidget);
   });
+
+  testWidgets('Home has no TODAY heading without events', (tester) async {
+    await pumpLauncher(tester, PhoneBackend(empty: true));
+    expect(find.text('Clear for\nthe day'), findsOneWidget);
+    expect(find.text('TODAY'), findsNothing);
+  });
+
+  testWidgets('Home keeps TODAY when there are events', (tester) async {
+    await pumpLauncher(tester, PhoneBackend());
+    expect(find.text('TODAY'), findsOneWidget);
+  });
 }
 
 /// An arc that is empty at first, as right after an install.

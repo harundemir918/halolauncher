@@ -13,6 +13,9 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/halo_ground</item>
         <item name="android:windowShowWallpaper">false</item>
+        <!-- No system outline around the app on key events: Halo draws its
+             own focus, and a stray outline would read as Volt. -->
+        <item name="android:defaultFocusHighlightEnabled">false</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>

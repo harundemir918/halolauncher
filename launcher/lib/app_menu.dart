@@ -58,7 +58,7 @@ class _AppMenuLayerState extends State<AppMenuLayer> {
               return HaloMenu(
                 key: const ValueKey('app-menu'),
                 title: app.label,
-                tag: app.work ? 'Work' : null,
+                tag: app.work ? 'Work' : (app.privateSpace ? 'Private' : null),
                 sections: [
                   HaloMenuSection(
                     label: 'Shortcuts',
