@@ -77,7 +77,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 *Status (2026-10-26):* the exit holds on a Pixel 10 Pro emulator (Android 17): a real SMS showed in Stream and on Home's card, a reply typed in Stream (opened from the card) went out as an SMS to the sender, a swipe cleared it from the phone's notifications, LATER snoozed one, a tap opened Messages, and a calendar event showed on Home the moment it was added. Not yet checked on the Galaxy S20 FE. One crash of Halo's process inside Android's process start (framework frames only, around a reinstall) was seen once and not reproduced.
 
-## Phase 5: Switchboard and System ◐
+## Phase 5: Switchboard and System ☑
 - ☑ Brightness dial: reads the real level and auto mode, sets it with the `WRITE_SETTINGS` grant; without it the dial reads only and its footer (`TAP TO ALLOW`) opens the grant screen. With the grant the footer turns auto brightness on and off
 - ☑ Sound dial: media volume, set directly; the footer shows the ringer mode (`MEDIA · RING`, `VIBRATE`, `SILENT`) read-only
 - ☑ Media strip: play/pause, flick left or right across the card to skip. Artwork ☐ (the design has no place for it)
@@ -89,14 +89,17 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 **Exit:** every control on Switchboard reflects real device state and either changes it or opens the right Android screen in one tap.
 
-*Status (2026-10-27):* the exit holds on a Pixel 10 Pro emulator (Android 17): Wi-Fi, Bluetooth, Cellular, Airplane and Focus showed the real state; the Wi-Fi switch opened the Wi-Fi panel and the row followed when Wi-Fi was turned off there; Focus switched Do Not Disturb on and the Sound footer moved to `SILENT`; with Write settings granted a tap on the Light ring set the system brightness (25 % is 63 of 255, auto off) and one on the Sound ring set the media volume; without it the dial read only and its footer opened the grant screen. The System button opened System and the Theme switch flipped the theme both ways (checked before it became a row). Not yet checked on the Galaxy S20 FE, nor the "full by" time while charging, nor skip with a real player.
+*Status (2026-10-27):* the exit holds on a Pixel 10 Pro emulator (Android 17): Wi-Fi, Bluetooth, Cellular, Airplane and Focus showed the real state; the Wi-Fi switch opened the Wi-Fi panel and the row followed when Wi-Fi was turned off there; Focus switched Do Not Disturb on and the Sound footer moved to `SILENT`; with Write settings granted a tap on the Light ring set the system brightness (25 % is 63 of 255, auto off) and one on the Sound ring set the media volume; without it the dial read only and its footer opened the grant screen. The System button opened System and the Theme switch flipped the theme both ways (checked before it became a row). On the Galaxy S20 FE the System screen showed the real grants (Notifications, Calendar, Write settings and Do not disturb granted, Contacts not) and `1 ALERT`; the Switchboard there is in use by the owner. Not checked: the "full by" time while charging, nor the "full by" time while charging, nor skip with a real player.
 
-## Phase 6: Recents and the at-a-glance screen
-- ☐ Recents from `UsageStatsManager` (usage access grant): slats for recently used apps, tap to switch; flick up removes from Halo's list
-- ☐ Slat previews: app icon and color, since a launcher can't read other apps' task snapshots
-- ☐ The Lock design as an at-a-glance screen (clock, next event, notification previews); how it is reached is an open question
+## Phase 6: Recents and the at-a-glance screen ☑
+- ☑ Recents from usage events (`PACKAGE_USAGE_STATS`, the user's usage access): up to five slats for the apps used last, newest left, tap the focused slat to switch to it, flick one up to drop it from Halo's list (it returns once used again; Android lets a launcher close nothing). Without the grant Recents explains and offers it. Work profile apps don't show (their usage isn't visible)
+- ☑ Slat previews: the app's icon on a wash of the icon's own color, since a launcher can't read other apps' task snapshots; collapsed slats carry the icon's monochrome mask
+- ☑ A route to Recents on Android: a `Recents ›` button in Apps' header (an up swipe on the arc opens Apps). The bottom-edge climb Home, Apps, Recents stays, but gesture navigation gives that strip to Android's own Recents (D-023, proposed)
+- ☑ The Lock design as an at-a-glance screen (clock, next event, notification previews), the page left of Home: a swipe right on Home opens it, a swipe left or the hold ring returns (D-021, decided: option A). The Camera shortcut starts the user's camera app. Flashlight ☐ (hidden until it works; `CameraManager.setTorchMode` needs no permission)
 
 **Exit:** Recents and the glance screen work on a phone with only the permissions the user granted.
+
+*Status (2026-10-27):* Recents holds on a Pixel 10 Pro emulator (Android 17): without usage access it asks and the button opens Settings > Usage access; with it, apps opened a moment before showed newest first, each with its icon and a wash of its color, a flick dropped Maps and the next app took the last slot, and a tap on the focused slat brought Settings to the front. Not yet checked on the Galaxy S20 FE. The glance page opened with a swipe right on Home, showed the real clock, the date and a real notification preview with only the Camera shortcut, and a swipe left returned to Home.
 
 ## Phase 7: Rule-based Halo (no AI, D-012)
 - ☑ Decided: no AI, on the phone or in the cloud (D-012)

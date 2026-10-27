@@ -87,15 +87,25 @@ Android 10 (API 29) brings `RoleManager.ROLE_HOME` (asking to become the default
 The id can't change once the app is published. It is also the Kotlin package name of the app (`com.baklavapp.halolauncher`) and of the plugin (`com.baklavapp.halolauncher.platform`).
 *History:* proposed as `com.harundemir.halolauncher`; the owner chose `com.baklavapp.halolauncher` before anything was published.
 
-## D-021 · Lock design on Android. **Open**
+## D-021 · Lock design on Android. **Decided** (2026-10-27): option A, the glance page
 A launcher can't replace the keyguard. Options: an at-a-glance page reached from Home, the screen shown once after unlock, or drop it. Until decided, the Android build starts on Home and Lock is reachable only with `--dart-define=HALO_START=lock`.
+*The case (2026-10-27), for the owner to pick:*
+- **A. A glance page left of Home**, reached by a swipe right on Home (not from the edge, which Android's back gesture owns) and left by the same swipe back. Clock, the next event and notification previews, with the design's hold ring turned into a "back to Home" hold. Cheapest, always one move away, never in the way.
+- **B. Shown once after unlock** when Halo comes to the front from a screen-off. Closest to the design, but a launcher can't tell an unlock from any return to Home, so it risks appearing when the user wants Home. It needs `ACTION_USER_PRESENT` or `SCREEN_OFF` receivers.
+- **C. Drop it.** Home already has the next event and Stream has the notifications.
+Recommended: A. It gives the design its screen with the least risk, and the data (calendar, notifications) is already served.
+*Decided (2026-10-27):* the owner took the recommendation. Built: the Lock screen is the glance page left of Home on Android. A swipe right on Home (anywhere above the arc; the arc's own drag zone is the bottom 260 px) opens it, and a swipe left, the hold ring, back or the Home button returns. It says `GLANCE` instead of `LOCKED`, leaves out the network it doesn't know, and shows the Camera shortcut (it starts the user's camera app) but not Flashlight, which does nothing yet. On macOS and in the goldens Lock is unchanged.
 
 ## D-022 · Recents from usage stats. **Proposed** (2026-10-26)
 The system Overview belongs to the system launcher; third-party launchers can't show live task surfaces or close tasks. Halo's Recents lists recently used apps from `UsageStatsManager` (usage access grant), tap to switch, flick up to drop from Halo's list.
+*Built (2026-10-27):* usage events (`ACTIVITY_RESUMED`, last three days) give the packages, newest first, minus Halo; each maps to the owner's launcher entry (work profile apps are out, their usage isn't visible). Five slats at most, as in the design, so the focused one keeps its width. A tap on the focused slat starts the app; a flick drops it into `recentsDropped` (package and time) and it returns once used again. The preview is the app's icon on a wash of its own color (taken from the icon in Kotlin); a drawn surface stays only for the mock's Maps. Without the grant Recents says what it needs and offers it.
+*Open for the owner:* which slat starts focused (the design's middle one, as now, or the app used last).
 
 ## D-023 · Shell gestures on Android. **Open**
 Android owns the bottom edge (home and Overview), the side edges (back) and the top edge (the notification shade). The desktop edge swipes (top left Stream, top right Switchboard, bottom Home/Recents) work today inside the launcher window, but the system takes most edge swipes first under gesture navigation. Options: swipes started away from the edges (down in the upper half of Home for Stream/Switchboard, up from the arc for Recents), or on-screen affordances.
 *2026-10-26:* on Android, an up swipe from the arc band or the bottom edge of Home opens Apps (D-026); Recents has no Android route until Phase 6.
+*2026-10-27 (proposed):* on Android the bottom-edge swipe climbs: Home, Apps, Recents; from anywhere else it goes Home. No new gesture, and Recents sits one step above Apps. Other options: a link in Apps' header, or a long-press on Home.
+*Checked on the Pixel 10 Pro emulator (2026-10-27):* the climb works when the swipe starts in the 44 px strip just above the system's gesture bar, which is narrow. Apps, Stream and System end their scrollers 44 px above the bottom so a list doesn't take that drag first (before this, the swipe did nothing on those screens). *Result on the owner's Galaxy (2026-10-27):* with gesture navigation Android keeps that strip and a swipe up there opens the system's own Recents, so the gesture can't be relied on. *Changed:* Apps' header has a `Recents ›` button (like `System ›` on Switchboard). The way in is now: an up swipe on the arc to Apps, then the button. The bottom-edge climb stays for phones where it works.
 
 ## D-024 · System bars, the design frame and Halo's status row. **Decided** (2026-10-26): the status row; **Proposed**: the frame
 The launcher draws edge to edge behind transparent system bars, and lays out the 390-wide design frame inside the safe area, scaled by width (`launcher/lib/design_frame.dart`).
