@@ -14,6 +14,8 @@ class HaloMediaStrip extends StatelessWidget {
     required this.progress,
     required this.playing,
     required this.onPlayPause,
+    this.onNext,
+    this.onPrevious,
   });
 
   final String title;
@@ -23,6 +25,14 @@ class HaloMediaStrip extends StatelessWidget {
   final double progress;
   final bool playing;
   final VoidCallback? onPlayPause;
+
+  /// A flick left across the card skips to the next track, a flick right to
+  /// the previous one. The design has no skip buttons.
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
+
+  /// A flick must be faster than this many logical pixels per second.
+  static const _flick = 300.0;
 
   static const _buttonRadius = BorderRadius.only(
     topLeft: Radius.circular(26),
@@ -69,54 +79,65 @@ class HaloMediaStrip extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: ShapeDecoration(
-                color: halo.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: HaloRadii.flat,
-                  side: BorderSide(color: halo.border),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragEnd: (d) {
+                final v = d.primaryVelocity ?? 0;
+                if (v < -_flick) onNext?.call();
+                if (v > _flick) onPrevious?.call();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
                 ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: HaloType.mediaTitle.copyWith(color: halo.text),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        HaloType.upper(artist),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: HaloType.caption.copyWith(color: halo.muted),
-                      ),
-                    ],
+                decoration: ShapeDecoration(
+                  color: halo.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: HaloRadii.flat,
+                    side: BorderSide(color: halo.border),
                   ),
-                  SizedBox(
-                    height: 3,
-                    child: ColoredBox(
-                      color: halo.mediaTrack,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: FractionallySizedBox(
-                          widthFactor: progress.clamp(0.0, 1.0),
-                          child: SizedBox(
-                            height: 3,
-                            child: ColoredBox(color: halo.mediaFill),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: HaloType.mediaTitle.copyWith(color: halo.text),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          HaloType.upper(artist),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: HaloType.caption.copyWith(color: halo.muted),
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 3,
+                      child: ColoredBox(
+                        color: halo.mediaTrack,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: FractionallySizedBox(
+                            widthFactor: progress.clamp(0.0, 1.0),
+                            child: SizedBox(
+                              height: 3,
+                              child: ColoredBox(color: halo.mediaFill),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

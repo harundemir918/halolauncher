@@ -161,6 +161,53 @@ void main() {
     expect(find.bySemanticsLabel('Play'), findsOneWidget);
   });
 
+  testWidgets('a flick across the card skips, a slow drag does not', (
+    tester,
+  ) async {
+    var next = 0;
+    var previous = 0;
+    await pumpIn(
+      tester,
+      HaloMediaStrip(
+        title: 'Night Drive',
+        artist: 'Mira Okafor',
+        progress: 0.42,
+        playing: true,
+        onPlayPause: () {},
+        onNext: () => next++,
+        onPrevious: () => previous++,
+      ),
+    );
+    final card = find.text('Night Drive');
+    await tester.fling(card, const Offset(-120, 0), 800);
+    await tester.pumpAndSettle();
+    expect((next, previous), (1, 0));
+    await tester.fling(card, const Offset(120, 0), 800);
+    await tester.pumpAndSettle();
+    expect((next, previous), (1, 1));
+    await tester.drag(card, const Offset(-60, 0));
+    await tester.pumpAndSettle();
+    expect((next, previous), (1, 1));
+  });
+
+  testWidgets('the title sits above the artist', (tester) async {
+    await pumpIn(
+      tester,
+      HaloMediaStrip(
+        title: 'A very long track title that cannot fit on one line at all',
+        artist: 'Mira Okafor',
+        progress: 0.1,
+        playing: true,
+        onPlayPause: () {},
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    final title = tester.getTopLeft(find.textContaining('A very long'));
+    final artist = tester.getTopLeft(find.text('MIRA OKAFOR'));
+    expect(artist.dy, greaterThan(title.dy));
+    expect(artist.dx, title.dx);
+  });
+
   testWidgets('a long source ellipsizes and keeps the time', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

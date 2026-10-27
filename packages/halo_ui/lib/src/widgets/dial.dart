@@ -26,6 +26,7 @@ class HaloDial extends StatefulWidget {
     required this.footer,
     required this.onChanged,
     this.active = false,
+    this.onFooterTap,
   });
 
   /// Mono caption under the value (`Light`, `Sound`).
@@ -36,6 +37,10 @@ class HaloDial extends StatefulWidget {
   final String footer;
   final bool active;
   final ValueChanged<double>? onChanged;
+
+  /// Makes the footer a button (Light's `Auto · on`). The tap area reaches
+  /// 28 px up from the plate's bottom padding; the text stays where it is.
+  final VoidCallback? onFooterTap;
 
   static const double dialSize = 132;
 
@@ -118,6 +123,10 @@ class _HaloDialState extends State<HaloDial> {
         ],
       ),
     );
+    final footer = Text(
+      HaloType.upper(widget.footer),
+      style: HaloType.footer.copyWith(color: halo.muted),
+    );
     return Semantics(
       slider: true,
       label: widget.caption,
@@ -167,10 +176,28 @@ class _HaloDialState extends State<HaloDial> {
                     child: ring,
                   ),
                 ),
-              Text(
-                HaloType.upper(widget.footer),
-                style: HaloType.footer.copyWith(color: halo.muted),
-              ),
+              if (widget.onFooterTap == null)
+                footer
+              else
+                Semantics(
+                  button: true,
+                  label: widget.footer,
+                  onTap: widget.onFooterTap,
+                  child: ExcludeSemantics(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: widget.onFooterTap,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 28,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: footer,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

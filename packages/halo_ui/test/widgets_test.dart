@@ -772,6 +772,23 @@ void main() {
   });
 
   group('HaloDial', () {
+    testWidgets('the footer is a button only when given a tap', (tester) async {
+      var taps = 0;
+      await pumpHalo(
+        tester,
+        HaloDial(
+          caption: 'Light',
+          value: 0.5,
+          footer: 'Auto · on',
+          onChanged: (_) {},
+          onFooterTap: () => taps++,
+        ),
+      );
+      await tester.tap(find.text('AUTO · ON'));
+      expect(taps, 1);
+      expect(tester.getSize(find.byType(HaloDial)).height, 200);
+    });
+
     /// One or two dials holding their own values, under an ancestor that
     /// listens for vertical drags, as the launcher's edge swipes do.
     Future<List<double>> pumpDials(
