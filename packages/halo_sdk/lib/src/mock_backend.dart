@@ -136,6 +136,12 @@ class MockBackend implements HaloBackend {
       detail: 'Focus row',
       granted: true,
     ),
+    AccessGrant(
+      id: 'usage',
+      title: 'Usage access',
+      detail: 'Recents',
+      granted: true,
+    ),
   ];
 
   @override
@@ -151,6 +157,12 @@ class MockBackend implements HaloBackend {
     ];
     _changes.add(null);
   }
+
+  @override
+  bool get canReadUsage => true;
+
+  @override
+  Future<void> requestUsageAccess() async {}
 
   @override
   Future<void> openAndroidSettings(String section) async =>

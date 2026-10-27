@@ -127,6 +127,14 @@ abstract interface class HaloBackend {
   /// back to it with Home. Broadcast.
   Stream<void> get homePressed;
 
+  /// Whether Halo may see which apps were used (Android's usage access).
+  /// Without it Recents is empty and offers the grant.
+  bool get canReadUsage;
+
+  /// Opens Android's usage access screen. [changes] fires once Halo is back
+  /// and the grant is read again.
+  Future<void> requestUsageAccess();
+
   /// Apps in Recents, left to right.
   List<HaloAppInfo> get recents;
 

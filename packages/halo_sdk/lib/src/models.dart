@@ -139,6 +139,7 @@ class HaloAppInfo {
     this.work = false,
     this.privateSpace = false,
     this.canUninstall = true,
+    this.accent,
   });
 
   /// Stable id: `messages` in the mock, the flattened component name
@@ -169,16 +170,22 @@ class HaloAppInfo {
   /// False for apps that ship with the system and can't be removed.
   final bool canUninstall;
 
-  HaloAppInfo withIcons(Uint8List? icon, Uint8List? monoIcon) => HaloAppInfo(
-    id: id,
-    label: label,
-    icon: icon,
-    monoIcon: monoIcon,
-    glyph: glyph,
-    work: work,
-    privateSpace: privateSpace,
-    canUninstall: canUninstall,
-  );
+  /// The icon's main color as ARGB, when the platform worked one out. Recents
+  /// tints a slat with it, since Halo can't read another app's last frame.
+  final int? accent;
+
+  HaloAppInfo withIcons(Uint8List? icon, Uint8List? monoIcon, [int? accent]) =>
+      HaloAppInfo(
+        id: id,
+        label: label,
+        icon: icon,
+        monoIcon: monoIcon,
+        glyph: glyph,
+        work: work,
+        privateSpace: privateSpace,
+        canUninstall: canUninstall,
+        accent: accent ?? this.accent,
+      );
 }
 
 /// A page of the system settings that search can open (`Wi-Fi`, `Battery`).
