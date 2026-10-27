@@ -36,6 +36,7 @@ class HaloAgendaRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
+                // 44 wide, as designed; `ALL DAY` wraps onto two lines.
                 SizedBox(
                   width: 44,
                   child: Text(

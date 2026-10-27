@@ -5,7 +5,7 @@ import '../notch_border.dart';
 import '../type.dart';
 
 /// Volt play/pause square next to a `surface` card with the track title, the
-/// mono artist and a 3 px progress bar. 64 high.
+/// mono artist below it and a 3 px progress bar. 64 high.
 class HaloMediaStrip extends StatelessWidget {
   const HaloMediaStrip({
     super.key,
@@ -70,7 +70,7 @@ class HaloMediaStrip extends StatelessWidget {
           const SizedBox(width: 4),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: ShapeDecoration(
                 color: halo.surface,
                 shape: RoundedRectangleBorder(
@@ -80,23 +80,22 @@ class HaloMediaStrip extends StatelessWidget {
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: HaloType.mediaTitle.copyWith(color: halo.text),
-                        ),
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: HaloType.mediaTitle.copyWith(color: halo.text),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 2),
                       Text(
                         HaloType.upper(artist),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: HaloType.caption.copyWith(color: halo.muted),
                       ),
                     ],

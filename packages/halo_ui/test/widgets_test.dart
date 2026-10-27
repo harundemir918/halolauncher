@@ -870,4 +870,25 @@ void main() {
       await b.up();
     });
   });
+
+  testWidgets('HaloAgendaRow wraps ALL DAY in its 44 px column', (
+    tester,
+  ) async {
+    await pumpHalo(
+      tester,
+      const Column(
+        children: [
+          HaloAgendaRow(time: '10:00', title: 'Standup', trailing: 'Room 3'),
+          HaloAgendaRow(time: 'ALL DAY', title: 'Holiday', trailing: ''),
+        ],
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    // Both titles start at the same place: the layout doesn't move.
+    expect(
+      tester.getTopLeft(find.text('Holiday')).dx,
+      tester.getTopLeft(find.text('Standup')).dx,
+    );
+    expect(tester.getSize(find.text('ALL DAY')).width, lessThanOrEqualTo(44));
+  });
 }
