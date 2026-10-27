@@ -45,6 +45,27 @@ void main() {
     expect(find.text('HOLD TO OPEN'), findsOneWidget);
   });
 
+  testWidgets('the glance page says so and shows only shortcuts that work', (
+    tester,
+  ) async {
+    useReferenceFrame(tester);
+    await tester.pumpWidget(
+      app(
+        LockScreen(
+          backend: MockBackend(),
+          onUnlock: () {},
+          glance: true,
+          onCamera: () {},
+        ),
+      ),
+    );
+    expect(find.text('GLANCE'), findsOneWidget);
+    expect(find.text('LOCKED'), findsNothing);
+    expect(find.bySemanticsLabel('Flashlight'), findsNothing);
+    expect(find.bySemanticsLabel('Camera'), findsOneWidget);
+    expect(find.text('HOLD TO OPEN'), findsOneWidget);
+  });
+
   testWidgets('holding the ring for long enough unlocks', (tester) async {
     useReferenceFrame(tester);
     var unlocked = 0;

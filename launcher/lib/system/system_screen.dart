@@ -3,6 +3,7 @@ import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import '../backend_builder.dart';
+import '../gestures.dart';
 import '../format.dart';
 import '../status_bar.dart';
 
@@ -90,7 +91,7 @@ class _SystemScreenState extends State<SystemScreen> {
                 top: 190,
                 left: HaloSpace.gutter,
                 right: HaloSpace.gutter,
-                bottom: 0,
+                bottom: EdgeSwipes.defaultEdge,
                 child: SingleChildScrollView(
                   child: Column(
                     children: [

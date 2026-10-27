@@ -18,13 +18,18 @@ class EdgeSwipes extends StatefulWidget {
     super.key,
     required this.child,
     required this.onSwipe,
-    this.edge = 44,
+    this.edge = defaultEdge,
     this.distance = 80,
     this.lowerArea = 0,
   });
 
   final Widget child;
   final ValueChanged<EdgeZone> onSwipe;
+
+  /// How far from the top or bottom a swipe must start. A scroller that
+  /// reaches the bottom would take the drag first (it is deeper in the tree),
+  /// so screens end their lists this far above the bottom.
+  static const double defaultEdge = 44;
   final double edge;
   final double distance;
 
@@ -77,4 +82,42 @@ class _EdgeSwipesState extends State<EdgeSwipes> {
       ),
     );
   }
+}
+
+/// A sideways swipe anywhere on its child: right goes to the glance page left
+/// of Home, left comes back (D-021). A child that scrolls sideways (the arc)
+/// takes its own drags first, since it is deeper in the tree.
+class GlanceSwipe extends StatefulWidget {
+  const GlanceSwipe({
+    super.key,
+    required this.child,
+    required this.onSwipe,
+    this.distance = 80,
+  });
+
+  final Widget child;
+
+  /// True for a swipe to the right, false for one to the left.
+  final ValueChanged<bool> onSwipe;
+  final double distance;
+
+  @override
+  State<GlanceSwipe> createState() => _GlanceSwipeState();
+}
+
+class _GlanceSwipeState extends State<GlanceSwipe> {
+  double _dx = 0;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.translucent,
+    onHorizontalDragStart: (_) => _dx = 0,
+    onHorizontalDragUpdate: (d) => _dx += d.delta.dx,
+    onHorizontalDragEnd: (d) {
+      final v = d.primaryVelocity ?? 0;
+      if (_dx > widget.distance || v > 700) widget.onSwipe(true);
+      if (_dx < -widget.distance || v < -700) widget.onSwipe(false);
+    },
+    child: widget.child,
+  );
 }

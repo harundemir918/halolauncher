@@ -102,6 +102,32 @@ void main() {
       expect(find.byType(AppsScreen), findsOneWidget);
     });
 
+    testWidgets('on a phone Apps climbs to Recents, then Home', (tester) async {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        HaloLauncher(
+          backend: MockBackend(),
+          start: 'apps',
+          bottomEdgeOpensApps: true,
+        ),
+      );
+      await tester.dragFrom(const Offset(195, 834), const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecentsScreen), findsOneWidget);
+      await tester.dragFrom(const Offset(195, 834), const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('the Recents button in Apps opens Recents', (tester) async {
+      await pumpLauncher(tester, MockBackend(), start: 'apps');
+      await tester.tap(find.text('Recents'));
+      await tester.pumpAndSettle();
+      expect(find.byType(RecentsScreen), findsOneWidget);
+    });
+
     testWidgets('an up swipe higher on Home does nothing', (tester) async {
       await pumpLauncher(tester, MockBackend());
       await tester.dragFrom(const Offset(195, 400), const Offset(0, -200));

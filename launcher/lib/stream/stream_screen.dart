@@ -3,6 +3,7 @@ import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import '../backend_builder.dart';
+import '../gestures.dart';
 import '../format.dart';
 import '../status_bar.dart';
 
@@ -174,7 +175,7 @@ class _StreamScreenState extends State<StreamScreen> {
                   top: 338,
                   left: HaloSpace.gutter,
                   right: HaloSpace.gutter,
-                  bottom: 0,
+                  bottom: EdgeSwipes.defaultEdge,
                   child: all.isEmpty
                       ? Text(
                           HaloType.upper('Nothing here'),

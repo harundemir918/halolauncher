@@ -15,6 +15,9 @@ class LockScreen extends StatefulWidget {
     required this.backend,
     required this.onUnlock,
     this.holdDuration = const Duration(milliseconds: 700),
+    this.glance = false,
+    this.onFlashlight,
+    this.onCamera,
   });
 
   final HaloBackend backend;
@@ -22,6 +25,13 @@ class LockScreen extends StatefulWidget {
 
   /// How long the ring must be held.
   final Duration holdDuration;
+
+  /// The Android build (D-021): the page left of Home, not a lock screen. It
+  /// says `GLANCE`, leaves out a network it doesn't know, and shows a shortcut
+  /// only when the phone can run it. The ring takes the user back to Home.
+  final bool glance;
+  final VoidCallback? onFlashlight;
+  final VoidCallback? onCamera;
 
   @override
   State<LockScreen> createState() => _LockScreenState();
@@ -81,8 +91,11 @@ class _LockScreenState extends State<LockScreen>
             left: HaloSpace.gutter,
             right: HaloSpace.gutter,
             child: HaloStatusRow(
-              left: const TextSpan(text: 'LOCKED'),
-              right: '${status.network} · ${status.batteryPercent}%',
+              left: TextSpan(text: widget.glance ? 'GLANCE' : 'LOCKED'),
+              right: [
+                if (status.network.isNotEmpty || !widget.glance) status.network,
+                '${status.batteryPercent}%',
+              ].join(' · '),
             ),
           ),
           Positioned(
@@ -128,24 +141,26 @@ class _LockScreenState extends State<LockScreen>
               ],
             ),
           ),
-          Positioned(
-            left: HaloSpace.gutter,
-            bottom: 52,
-            child: HaloShortcut(
-              icon: HaloIcons.flashlight,
-              label: 'Flashlight',
-              onPressed: () {},
+          if (!widget.glance || widget.onFlashlight != null)
+            Positioned(
+              left: HaloSpace.gutter,
+              bottom: 52,
+              child: HaloShortcut(
+                icon: HaloIcons.flashlight,
+                label: 'Flashlight',
+                onPressed: widget.onFlashlight ?? () {},
+              ),
             ),
-          ),
-          Positioned(
-            right: HaloSpace.gutter,
-            bottom: 52,
-            child: HaloShortcut(
-              icon: HaloIcons.camera,
-              label: 'Camera',
-              onPressed: () {},
+          if (!widget.glance || widget.onCamera != null)
+            Positioned(
+              right: HaloSpace.gutter,
+              bottom: 52,
+              child: HaloShortcut(
+                icon: HaloIcons.camera,
+                label: 'Camera',
+                onPressed: widget.onCamera ?? () {},
+              ),
             ),
-          ),
           Positioned(
             left: 0,
             right: 0,

@@ -59,6 +59,7 @@ Future<void> main() async {
           ? 'home'
           : 'lock',
       bottomEdgeOpensApps: backend is AndroidBackend,
+      glancePage: backend is AndroidBackend,
     ),
   );
 }
@@ -69,15 +70,20 @@ class HaloLauncher extends StatefulWidget {
     required this.backend,
     this.start = 'lock',
     this.bottomEdgeOpensApps = false,
+    this.glancePage = false,
   });
 
   final HaloBackend backend;
   final String start;
 
-  /// On a phone, an up swipe from just above the system's gesture bar also
-  /// opens Apps: that is where a thumb starts, and Recents has nothing to
-  /// show on Android until Phase 6 (D-023, D-026).
+  /// On a phone, an up swipe from just above the system's gesture bar opens
+  /// Apps from Home, and Recents from Apps: that is where a thumb starts
+  /// (D-023, D-026).
   final bool bottomEdgeOpensApps;
+
+  /// Lock is the glance page left of Home: a swipe right on Home opens it, a
+  /// swipe left (or the ring, or back) returns (D-021).
+  final bool glancePage;
 
   @override
   State<HaloLauncher> createState() => _HaloLauncherState();
@@ -152,18 +158,32 @@ class _HaloLauncherState extends State<HaloLauncher> {
     }
   }
 
+  /// The user's camera app, for the glance page's shortcut.
+  HaloAppInfo? get _cameraApp =>
+      widget.backend.apps.where((a) => a.glyph == 'camera').firstOrNull;
+
+  void _onGlanceSwipe(bool right) => setState(() {
+    if (_screen == 'home' && right) {
+      _screen = 'lock';
+      _menu = null;
+      _ask = false;
+    } else if (_screen == 'lock' && !right) {
+      _screen = 'home';
+    }
+  });
+
   void _onSwipe(EdgeZone zone) => setState(() {
     _ask = false;
     _screen = switch (zone) {
       EdgeZone.topRight => 'switchboard',
       EdgeZone.topLeft => 'stream',
       // Up from the bottom: Home, and from Home, Recents.
-      EdgeZone.bottom =>
-        _screen != 'home'
-            ? 'home'
-            : widget.bottomEdgeOpensApps
-            ? 'apps'
-            : 'recents',
+      // On Android the bottom edge climbs: Home, Apps, Recents (D-023).
+      EdgeZone.bottom => switch (_screen) {
+        'home' => widget.bottomEdgeOpensApps ? 'apps' : 'recents',
+        'apps' when widget.bottomEdgeOpensApps => 'recents',
+        _ => 'home',
+      },
       EdgeZone.lowerArea => 'apps',
     };
   });
@@ -182,6 +202,8 @@ class _HaloLauncherState extends State<HaloLauncher> {
       'lock' => LockScreen(
         backend: widget.backend,
         onUnlock: () => setState(() => _screen = 'home'),
+        glance: widget.glancePage,
+        onCamera: _cameraApp == null ? null : () => _launch(_cameraApp!.id),
       ),
       'home' => HomeScreen(
         backend: widget.backend,
@@ -197,7 +219,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
         autofocusSearch: _ask,
       ),
       'switchboard' => SwitchboardScreen(backend: widget.backend),
-      'recents' => RecentsScreen(backend: widget.backend),
+      'recents' => RecentsScreen(backend: widget.backend, onLaunch: _launch),
       'stream' => StreamScreen(
         key: ValueKey('stream-$_replyTo'),
         backend: widget.backend,
@@ -239,7 +261,21 @@ class _HaloLauncherState extends State<HaloLauncher> {
                         // Lock only opens with the hold ring, so it has no edge
                         // swipes. On Home, an up swipe on the arc opens Apps.
                         if (_screen == 'lock')
-                          screen
+                          widget.glancePage
+                              ? GlanceSwipe(
+                                  onSwipe: _onGlanceSwipe,
+                                  child: screen,
+                                )
+                              : screen
+                        else if (_screen == 'home' && widget.glancePage)
+                          GlanceSwipe(
+                            onSwipe: _onGlanceSwipe,
+                            child: EdgeSwipes(
+                              onSwipe: _onSwipe,
+                              lowerArea: HaloArc.dragZone,
+                              child: screen,
+                            ),
+                          )
                         else
                           EdgeSwipes(
                             onSwipe: _onSwipe,

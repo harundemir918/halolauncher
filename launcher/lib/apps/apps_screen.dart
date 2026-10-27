@@ -4,6 +4,8 @@ import 'package:halo_ui/halo_ui.dart';
 
 import '../app_icons.dart';
 import '../backend_builder.dart';
+import '../gestures.dart';
+import '../shell_nav.dart';
 import '../status_bar.dart';
 
 /// Apps: every installed app in one list, never a grid (D-026). A command
@@ -292,6 +294,20 @@ class _AppsScreenState extends State<AppsScreen> {
                   ],
                 ),
               ),
+              // Android owns the bottom edge swipe (it opens its own Recents),
+              // so Halo's Recents has a button here (D-023).
+              if (ShellNav.maybeOf(context) case final nav?)
+                Positioned(
+                  top: 54,
+                  right: HaloSpace.gutter,
+                  child: HaloButton(
+                    label: 'Recents',
+                    size: HaloButtonSize.small,
+                    variant: HaloButtonVariant.secondary,
+                    trailing: HaloIcon(HaloIcons.chevronRight, size: 14),
+                    onPressed: () => nav.open('recents'),
+                  ),
+                ),
               Positioned(
                 top: 120,
                 left: HaloSpace.gutter,
@@ -317,7 +333,7 @@ class _AppsScreenState extends State<AppsScreen> {
               ),
               Positioned(
                 top: 180,
-                bottom: 0,
+                bottom: EdgeSwipes.defaultEdge,
                 left: HaloSpace.gutter,
                 right: query.trim().isEmpty
                     ? HaloSpace.gutter + HaloLetterIndex.width

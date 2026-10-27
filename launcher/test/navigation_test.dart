@@ -155,4 +155,61 @@ void main() {
       expect(tester.takeException(), isNull, reason: s);
     }
   });
+
+  group('the glance page left of Home (D-021)', () {
+    Future<void> pumpPhone(WidgetTester tester, {bool glance = true}) {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      return tester.pumpWidget(
+        HaloLauncher(backend: MockBackend(), start: 'home', glancePage: glance),
+      );
+    }
+
+    testWidgets('a swipe right on Home opens it, a swipe left returns', (
+      tester,
+    ) async {
+      await pumpPhone(tester);
+      await swipe(tester, const Offset(120, 300), const Offset(220, 0));
+      expect(find.byType(LockScreen), findsOneWidget);
+      expect(find.text('GLANCE'), findsOneWidget);
+      await swipe(tester, const Offset(300, 300), const Offset(-220, 0));
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('a short or leftward swipe on Home does nothing', (
+      tester,
+    ) async {
+      await pumpPhone(tester);
+      await swipe(tester, const Offset(120, 300), const Offset(30, 0));
+      await swipe(tester, const Offset(300, 300), const Offset(-220, 0));
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('a sideways drag on the arc moves the arc, not the page', (
+      tester,
+    ) async {
+      await pumpPhone(tester);
+      await swipe(tester, const Offset(120, 740), const Offset(220, 0));
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('without it a swipe right does nothing', (tester) async {
+      await pumpPhone(tester, glance: false);
+      await swipe(tester, const Offset(120, 300), const Offset(220, 0));
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('holding the ring goes back to Home', (tester) async {
+      await pumpPhone(tester);
+      await swipe(tester, const Offset(120, 300), const Offset(220, 0));
+      final ring = find.byType(HaloHoldRing);
+      final g = await tester.startGesture(tester.getCenter(ring));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 800));
+      await g.up();
+      await tester.pumpAndSettle();
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+  });
 }

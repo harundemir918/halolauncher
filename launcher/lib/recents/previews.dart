@@ -1,13 +1,17 @@
 import 'package:flutter/widgets.dart';
+import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
 
-/// What a focused slat shows for an app. In the OS this is the app's last
-/// frame as an external texture (ARCHITECTURE §5); until then only Maps has a
-/// mock surface.
-Widget previewFor(String appId, String label) => switch (appId) {
-  'maps' => const MapsPreview(),
-  _ => _NoPreview(label: label),
-};
+import '../app_icons.dart';
+
+/// What a focused slat shows for an app. Android gives a launcher no way to
+/// read another app's last frame, so a real app shows its icon on a wash of
+/// the icon's own color; the mock's Maps has a drawn surface.
+Widget previewFor(HaloAppInfo app) {
+  if (app.id == 'maps' && app.icon == null) return const MapsPreview();
+  if (app.icon != null) return IconPreview(app: app);
+  return _NoPreview(label: app.label);
+}
 
 /// Header shared by app previews: a Volt square and the app name.
 class _Header extends StatelessWidget {
@@ -30,6 +34,48 @@ class _Header extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// The app's icon, large, on its own color: opaque, one flat wash (no glass).
+class IconPreview extends StatelessWidget {
+  const IconPreview({super.key, required this.app});
+
+  final HaloAppInfo app;
+
+  @override
+  Widget build(BuildContext context) {
+    final halo = context.halo;
+    final accent = app.accent;
+    final wash = accent == null
+        ? halo.well
+        : Color.alphaBlend(Color(accent).withValues(alpha: 0.22), halo.well);
+    return ColoredBox(
+      color: wash,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Header(app.label),
+            const Spacer(),
+            Center(
+              child: Image(
+                image: imageFor(app)!,
+                width: 72,
+                height: 72,
+                filterQuality: FilterQuality.medium,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              HaloType.upper('Tap to open'),
+              style: HaloType.kicker.copyWith(color: halo.muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _NoPreview extends StatelessWidget {

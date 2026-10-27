@@ -1,16 +1,22 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_sdk/halo_sdk.dart';
+import 'package:halo_launcher/recents/previews.dart';
 import 'package:halo_launcher/recents/recents_screen.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import 'support/fonts.dart';
 
-Widget app(HaloBackend backend) => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: HaloTheme.dark(),
-  home: Scaffold(body: RecentsScreen(backend: backend)),
-);
+Widget app(HaloBackend backend, {ValueChanged<String>? onLaunch}) =>
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: HaloTheme.dark(),
+      home: Scaffold(
+        body: RecentsScreen(backend: backend, onLaunch: onLaunch),
+      ),
+    );
 
 void main() {
   setUpAll(() async {
@@ -170,4 +176,83 @@ void main() {
       matchesGoldenFile('goldens/recents.png'),
     );
   }, tags: 'golden');
+
+  testWidgets('a tap on the focused slat switches to its app', (tester) async {
+    tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final launched = <String>[];
+    await tester.pumpWidget(app(MockBackend(), onLaunch: launched.add));
+    // The middle one (Maps) is focused first.
+    await tester.tap(find.text('KARAKÖY'));
+    expect(launched, ['maps']);
+  });
+
+  testWidgets('without usage access it asks, and says nothing leaves', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final b = _NoUsage();
+    await tester.pumpWidget(app(b));
+    expect(find.text('CLEAR ALL'), findsNothing);
+    expect(find.textContaining('NOTHING LEAVES THIS PHONE'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('usage-access')));
+    expect(b.asked, 1);
+  });
+
+  testWidgets('a real app shows its icon on its color, not a mock surface', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(_RealApps()));
+    expect(find.text('TAP TO OPEN'), findsOneWidget);
+    expect(find.text('KARAKÖY'), findsNothing);
+    final wash = tester.widget<ColoredBox>(
+      find
+          .descendant(
+            of: find.byType(IconPreview),
+            matching: find.byType(ColoredBox),
+          )
+          .first,
+    );
+    // The wash is opaque: the accent mixed into the slat's own color.
+    expect(wash.color.a, 1);
+    expect(wash.color, isNot(HaloColors.well));
+  });
+}
+
+/// A phone before the user grants usage access.
+class _NoUsage extends MockBackend {
+  int asked = 0;
+
+  @override
+  bool get canReadUsage => false;
+
+  @override
+  List<HaloAppInfo> get recents => const [];
+
+  @override
+  Future<void> requestUsageAccess() async => asked++;
+}
+
+// A 1 x 1 transparent PNG, enough for an icon.
+final _png = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// Recents of real apps: an icon and an accent, no design glyph.
+class _RealApps extends MockBackend {
+  @override
+  List<HaloAppInfo> get recents => [
+    HaloAppInfo(
+      id: 'com.example/.Main',
+      label: 'Example',
+      icon: _png,
+      accent: 0xFF3366CC,
+    ),
+  ];
 }

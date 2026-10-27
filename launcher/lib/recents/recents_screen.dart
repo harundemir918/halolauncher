@@ -11,23 +11,30 @@ import 'previews.dart';
 /// Recents: slats in a row. Collapsed slats on the sides, the focused one in
 /// the middle showing its app. Flick a slat up to close it.
 class RecentsScreen extends StatefulWidget {
-  const RecentsScreen({super.key, required this.backend});
+  const RecentsScreen({super.key, required this.backend, this.onLaunch});
 
   final HaloBackend backend;
+
+  /// Tapping the focused slat switches to its app.
+  final ValueChanged<String>? onLaunch;
 
   @override
   State<RecentsScreen> createState() => _RecentsScreenState();
 }
 
 class _RecentsScreenState extends State<RecentsScreen> {
-  late int _focused = widget.backend.recents.length ~/ 2;
+  /// As many as the design shows: more would squeeze the focused slat. A
+  /// closed one is replaced by the next recent app.
+  static const maxSlats = 5;
+
+  late int _focused = widget.backend.recents.length.clamp(0, maxSlats) ~/ 2;
 
   void _close(HaloSlatData slat) {
-    final before = widget.backend.recents;
+    final before = widget.backend.recents.take(maxSlats).toList();
     final closed = before.indexWhere((a) => a.id == slat.id);
     if (closed < 0) return;
     widget.backend.closeRecent(slat.id);
-    final n = before.length - 1;
+    final n = widget.backend.recents.length.clamp(0, maxSlats);
     setState(() {
       // Keep the same app focused; if the focused one closed, the next one
       // slides into its place (or the last, if it was last).
@@ -36,19 +43,39 @@ class _RecentsScreenState extends State<RecentsScreen> {
     });
   }
 
+  /// The app's own icon on a collapsed slat: a design glyph for a role app
+  /// (null here), else the icon's monochrome mask tinted like the arc's.
+  Widget? _slatIcon(BuildContext context, HaloAppInfo a) {
+    if (a.glyph != null) return null;
+    final mono = monoImageFor(a);
+    if (mono != null) {
+      return Image(
+        image: mono,
+        width: 20,
+        height: 20,
+        color: context.halo.text,
+        colorBlendMode: BlendMode.srcIn,
+        filterQuality: FilterQuality.medium,
+      );
+    }
+    final icon = imageFor(a);
+    return icon == null ? null : Image(image: icon, width: 22, height: 22);
+  }
+
   @override
   Widget build(BuildContext context) {
     return BackendBuilder(
       backend: widget.backend,
       builder: (context, b) {
-        final recents = b.recents;
+        final recents = b.recents.take(maxSlats).toList();
         final slats = [
           for (final a in recents)
             HaloSlatData(
               id: a.id,
               label: a.label,
               icon: iconFor(a),
-              preview: previewFor(a.id, a.label),
+              preview: previewFor(a),
+              iconWidget: _slatIcon(context, a),
             ),
         ];
         return ColoredBox(
@@ -106,19 +133,22 @@ class _RecentsScreenState extends State<RecentsScreen> {
                 right: 16,
                 height: 620,
                 child: slats.isEmpty
-                    ? Center(
-                        child: Text(
-                          HaloType.upper('No recent apps'),
-                          style: HaloType.kicker.copyWith(
-                            color: context.halo.muted,
-                          ),
-                        ),
-                      )
+                    ? (b.canReadUsage
+                          ? Center(
+                              child: Text(
+                                HaloType.upper('No recent apps'),
+                                style: HaloType.kicker.copyWith(
+                                  color: context.halo.muted,
+                                ),
+                              ),
+                            )
+                          : _UsageAsk(onAllow: b.requestUsageAccess))
                     : HaloSlats(
                         slats: slats,
                         focusedIndex: _focused.clamp(0, slats.length - 1),
                         onFocus: (i) => setState(() => _focused = i),
                         onClose: _close,
+                        onOpen: (s) => widget.onLaunch?.call(s.id),
                       ),
               ),
               if (slats.isNotEmpty)
@@ -148,6 +178,48 @@ class _RecentsScreenState extends State<RecentsScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Without usage access: what Recents does, that it stays on the phone, and
+/// the one way to allow it (CLAUDE.md rules 5 and 6).
+class _UsageAsk extends StatelessWidget {
+  const _UsageAsk({required this.onAllow});
+
+  final VoidCallback onAllow;
+
+  @override
+  Widget build(BuildContext context) {
+    final halo = context.halo;
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 24, 8, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'The apps you used\nlast, in a row.',
+              style: HaloType.headline.copyWith(color: halo.text),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              HaloType.upper(
+                'Halo needs usage access to see which apps you used. '
+                'Nothing leaves this phone.',
+              ),
+              style: HaloType.context.copyWith(color: halo.muted),
+            ),
+            const SizedBox(height: 18),
+            HaloButton(
+              key: const ValueKey('usage-access'),
+              label: 'Allow access',
+              onPressed: onAllow,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
