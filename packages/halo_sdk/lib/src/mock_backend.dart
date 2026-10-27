@@ -422,6 +422,23 @@ class MockBackend implements HaloBackend {
   @override
   void markNotificationsSeen() => seenMarks++;
 
+  /// Notification actions the mock ran, as (notification id, action id).
+  final actionsRun = <(String, String)>[];
+
+  /// Places and event ids the mock was asked to open, in order.
+  final mapsOpened = <String>[];
+  final eventsOpened = <String>[];
+
+  @override
+  Future<void> runNotificationAction(String id, String actionId) async =>
+      actionsRun.add((id, actionId));
+
+  @override
+  Future<void> openMap(String place) async => mapsOpened.add(place);
+
+  @override
+  Future<void> openEvent(String eventId) async => eventsOpened.add(eventId);
+
   @override
   List<HaloNotification> get lockPreviews => [
     for (final id in const ['elif-1', 'parcel-1'])

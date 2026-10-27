@@ -3,10 +3,11 @@ import 'models.dart';
 // Halo's rules: what a backend derives from the phone's data. No AI, no
 // model, just these (docs/DECISIONS.md D-012).
 
-/// The first event that hasn't started yet, if any.
+/// The first timed event that hasn't started yet, if any. All-day events
+/// have no "in 19 min", so they are never next.
 CalendarEvent? nextEventIn(List<CalendarEvent> agenda, DateTime now) {
   for (final e in agenda) {
-    if (!e.start.isBefore(now)) return e;
+    if (!e.allDay && !e.start.isBefore(now)) return e;
   }
   return null;
 }

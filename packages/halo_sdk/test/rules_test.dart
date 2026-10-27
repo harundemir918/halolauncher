@@ -38,6 +38,23 @@ void main() {
     expect(nextEventIn(const [], now), isNull);
   });
 
+  test('an all-day event is never next', () {
+    final agenda = [
+      CalendarEvent(
+        start: DateTime(2026, 10, 26),
+        title: 'Holiday',
+        location: '',
+        allDay: true,
+      ),
+      CalendarEvent(
+        start: DateTime(2026, 10, 26, 11),
+        title: 'B',
+        location: '',
+      ),
+    ];
+    expect(nextEventIn(agenda, DateTime(2026, 10, 26)), same(agenda[1]));
+  });
+
   test('summary: new, read, and unread messages to reply to', () {
     final s = summaryOf([
       n('1', unread: true, canReply: true, sender: 'Elif'),

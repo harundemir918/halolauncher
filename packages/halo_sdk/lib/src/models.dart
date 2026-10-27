@@ -28,7 +28,15 @@ class CalendarEvent {
     required this.location,
     this.walkMinutes,
     this.attendees,
+    this.id,
+    this.allDay = false,
   });
+
+  /// The calendar's own id, when the event comes from the phone (to open it).
+  final String? id;
+
+  /// An all-day event: [start] is the day's midnight, and it has no time.
+  final bool allDay;
 
   final DateTime start;
   final String title;
@@ -67,6 +75,7 @@ class HaloNotification {
     this.preview,
     this.canReply = false,
     this.canDismiss = true,
+    this.actions = const [],
     this.actionPrompt,
   });
 
@@ -96,6 +105,9 @@ class HaloNotification {
   /// Whether it can be swiped away (ongoing ones can't).
   final bool canDismiss;
 
+  /// The app's own actions besides reply (`Mark as read`, `Archive`).
+  final List<NotificationAction> actions;
+
   /// Short question Halo offers to answer from Home (`Still on for 7?`).
   final String? actionPrompt;
 
@@ -106,6 +118,14 @@ class HaloNotification {
     if (d.inHours < 24) return '${d.inHours}H';
     return '${d.inDays}D';
   }
+}
+
+/// One of a notification's own actions, by its place in the notification.
+class NotificationAction {
+  const NotificationAction({required this.id, required this.label});
+
+  final String id;
+  final String label;
 }
 
 /// An installed app, in arc order.

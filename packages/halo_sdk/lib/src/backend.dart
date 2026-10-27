@@ -142,6 +142,15 @@ abstract interface class HaloBackend {
   /// Puts the notification away for an hour (Stream's LATER).
   Future<void> snoozeNotification(String id);
 
+  /// Runs one of the notification's own actions ([HaloNotification.actions]).
+  Future<void> runNotificationAction(String id, String actionId);
+
+  /// Opens the maps app at a place (Home's Navigate).
+  Future<void> openMap(String place);
+
+  /// Opens a calendar event in the calendar app (Home's Open event).
+  Future<void> openEvent(String eventId);
+
   /// Everything shown so far counts as seen: it moves from NOW to EARLIER.
   /// Called when the user leaves Stream.
   void markNotificationsSeen();

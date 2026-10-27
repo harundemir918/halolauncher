@@ -158,6 +158,16 @@ void main() {
       expect(b.snoozed, ['parcel-1']);
     });
 
+    test('actions, maps and events are recorded', () async {
+      final b = MockBackend();
+      await b.runNotificationAction('elif-1', '1');
+      await b.openMap('Room 3');
+      await b.openEvent('42');
+      expect(b.actionsRun, [('elif-1', '1')]);
+      expect(b.mapsOpened, ['Room 3']);
+      expect(b.eventsOpened, ['42']);
+    });
+
     test('open, access and seen are recorded', () async {
       final b = MockBackend();
       await b.openNotification('elif-1');
