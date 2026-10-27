@@ -196,7 +196,7 @@ Blocks have a **large top-left radius** and small radii on the other three corne
 | **Inline action card** | `surface`, `notchM` or `notchL`. Flare dot, mono sender and age, Bricolage question, plus small "Yes" (bone fill) and "Later" (outline) buttons. |
 | **Timeline item** | 1 px `line10` spine on the left. Node is a 9 px dot: Volt for current, Flare for alert, a hollow 1.5 px ash ring for read. Mono kicker (`MESSAGES · ELIF`) with the time on the right, body below. Text actions (`REPLY` in Volt, `LATER` in ash) are underlined with a 1 px bar. |
 | **Battery cells** | 10 segments, 14 high, with 4 px gaps, radius 2. Volt when filled, `line12` when empty. Partial fill is allowed on the boundary cell. |
-| **Media strip** | Volt notch square play/pause button with a `surface` card holding the title, mono artist and a 3 px progress bar (bone on `line10`). |
+| **Media strip** | Volt notch square play/pause button with a `surface` card holding the title, the mono artist below it (stacked, so a long title and artist both stay visible; the design set them side by side) and a 3 px progress bar (bone on `line10`). |
 | **Section kicker** | 8 × 8 Volt square followed by a mono label (`NOW`, `COLOR`, `MESSAGES`). |
 | **App row** *(launcher, not in the designs, D-026)* | 60 high with a `line10` hairline below. A 40 px app circle (`surface`, `line12` border, the app's icon or a glyph), the name in `rowTitle`, and mono `caption` tags on the right: `WORK` in ash, `ON ARC` in Volt. |
 | **Result row** *(D-026)* | A search result that isn't an app, same 60 high row: a contact with its initials in a 40 px `notchM` (`surface`, `line08` border; never a circle), a settings page with only its name, or an ask with a Volt caption for the one primary action (`ALLOW`). |

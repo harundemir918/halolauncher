@@ -65,13 +65,13 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 ## Phase 3c: Status row ☑
 - ☑ Halo's status row no longer repeats Android's time, date and battery: `STREAM` (with a Flare dot while something is unread) and `SWITCHBOARD`, each opening its screen; the battery line stays (D-024)
 
-## Phase 4: Calendar and notifications ◐
-- ☑ Calendar via `CalendarContract` (`READ_CALENDAR`, asked for from Home's TODAY): Home "NOW", the `TODAY` agenda and the next event, live when the calendar changes. All-day events ☐ (left out for now)
+## Phase 4: Calendar and notifications ☑
+- ☑ Calendar via `CalendarContract` (`READ_CALENDAR`, asked for from Home's TODAY): Home "NOW", the `TODAY` agenda and the next event, live when the calendar changes. All-day events show as `ALL DAY` and are never the next event
 - ☑ `NotificationListenerService` with an onboarding screen in Stream for the special access grant ("Nothing leaves this phone")
-- ◐ Stream: the timeline in `NOW` / `EARLIER` with unread (since Stream was last left), the current message (Volt) and alerts (Flare); tap to open, swipe to dismiss on the phone, inline REPLY, LATER snoozes for an hour (D-028) ☑. Other notification actions (Mark as read, Archive…) ☐
+- ☑ Stream: the timeline in `NOW` / `EARLIER` with unread (since Stream was last left), the current message (Volt) and alerts (Flare); tap to open, swipe to dismiss on the phone, inline REPLY, LATER snoozes for an hour (D-028); up to two of the app's own actions (Mark as read, Archive…) follow them
 - ☑ The Home action card for the newest unread message: Reply opens it in Stream with the reply field ready; Later snoozes it
-- ◐ Media sessions (from the listener) for the Switchboard media strip, with play/pause: built and unit tested ☑, checked on a device ☐
-- ☐ "Navigate" and "Open notes" under Home's NOW do something (maps to the event's location; notes is open)
+- ☑ Media sessions (from the listener) for the Switchboard media strip, with play/pause; the progress bar moves each second while a track plays; title above artist
+- ☑ "Navigate" opens the maps app at the event's place (hidden without one); for a real event the second button is "Open event" in the calendar app, the design's sample keeps "Open notes"
 
 **Exit:** Stream shows the phone's real notifications, a reply sent from Stream or Home reaches the sender, and dismissing in Halo dismisses on Android.
 
