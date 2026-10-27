@@ -126,6 +126,15 @@ The designs show the button under the arc but not what it does. Owner approved:
 - **Long press:** opens the assistant the user picked in Android (`ACTION_ASSIST`, else `ACTION_VOICE_COMMAND`); nothing happens if there is none. Halo has no assistant of its own (D-012).
 - **Later (Phase 7):** rule-based commands typed into the same field ("next", "reply Elif …", "dark", "battery").
 
+## D-029 · Switchboard and System hand over what Android reserves. **Proposed** (2026-10-27)
+Rule 1 (a normal app) means Halo shows real state and hands over what it can't change itself:
+- **Set directly:** media volume (`AudioManager`), brightness and auto brightness (with the user's Write settings grant), Do Not Disturb on and off (with notification policy access), media play/pause and skip.
+- **Handed over:** Wi-Fi, Bluetooth, mobile data and airplane mode are read (`ConnectivityManager`, `WifiManager`, the Bluetooth adapter, `Settings.Global`) and kept current by broadcasts and a network callback, but the switch opens the Settings panel (`Settings.Panel.ACTION_WIFI`, `ACTION_INTERNET_CONNECTIVITY`, the Bluetooth and airplane pages). The row follows when the user comes back.
+- **Not shown on purpose:** the Wi-Fi network's name and the count of paired Bluetooth devices, which need location and Bluetooth permissions. Rows say `CONNECTED`, `ON` or `OFF`.
+- **System:** only Display is designed. The other sections open the matching Android Settings page, and Privacy lists the optional accesses with a switch that opens the grant. Android lets the user take an access back only in Settings, so a granted switch opens Settings too.
+- **Deviations from the design:** the Light dial's footer is a button (auto brightness, or the grant when missing); a flick across the media strip skips; the strip stacks title above artist; the Switchboard's top right holds a `SYSTEM` link (the only way into Halo's System screen) and a dark/light switch (on is dark; flipping it sets that appearance by hand, System keeps Auto). They sit at the top because the frame is only about 800 high on a phone with a cutout and a nav bar, so nothing fits below the battery cells.
+*Open for the owner:* whether the Sound footer should cycle the ringer mode.
+
 ## D-028 · Notification rules in Stream and on Home. **Proposed** (2026-10-26)
 Android doesn't track whether a notification was read, and the designs show the result, not the rules. Rule-based, no AI (D-012):
 - **Unread** is what arrived since the user last left Stream (saved on the phone as `streamSeen`). Unread items are in `NOW`, the rest in `EARLIER`.

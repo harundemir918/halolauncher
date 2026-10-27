@@ -77,16 +77,19 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 *Status (2026-10-26):* the exit holds on a Pixel 10 Pro emulator (Android 17): a real SMS showed in Stream and on Home's card, a reply typed in Stream (opened from the card) went out as an SMS to the sender, a swipe cleared it from the phone's notifications, LATER snoozed one, a tap opened Messages, and a calendar event showed on Home the moment it was added. Not yet checked on the Galaxy S20 FE. One crash of Halo's process inside Android's process start (framework frames only, around a reinstall) was seen once and not reproduced.
 
-## Phase 5: Switchboard and System
-- ☐ Brightness dial (`WRITE_SETTINGS` grant, auto-brightness toggle)
-- ☐ Sound dial (media volume, ringer mode)
-- ☐ Media strip: play/pause, skip, artwork from the active media session
-- ☐ Battery line and cells from `BatteryManager`; "full by" estimate while charging
-- ☐ Connection rows (Wi-Fi, Bluetooth, Cellular, Airplane): show the real state; toggle where the API allows, otherwise open the Android Settings panel
-- ☐ Focus row mapped to Do Not Disturb (notification policy access)
-- ☐ System screen: launcher settings (appearance, text size, arc apps, permissions status) plus shortcuts into the Android Settings pages for the other sections
+## Phase 5: Switchboard and System ◐
+- ☑ Brightness dial: reads the real level and auto mode, sets it with the `WRITE_SETTINGS` grant; without it the dial reads only and its footer (`TAP TO ALLOW`) opens the grant screen. With the grant the footer turns auto brightness on and off
+- ☑ Sound dial: media volume, set directly; the footer shows the ringer mode (`MEDIA · RING`, `VIBRATE`, `SILENT`) read-only
+- ☑ Media strip: play/pause, flick left or right across the card to skip. Artwork ☐ (the design has no place for it)
+- ☑ Battery line and cells from `BatteryManager`; "full by" from `computeChargeTimeRemaining()` while charging (unit tested; the emulator is at 100%, so not seen on screen)
+- ☑ Connection rows (Wi-Fi, Bluetooth, Cellular, Airplane) show the real state and stay in step when it changes; Android doesn't let an app switch them, so the switch opens the matching Settings panel (D-029)
+- ☑ Focus row mapped to Do Not Disturb: on and off with notification policy access, which the row asks for when it is missing
+- ☑ System screen: Display is the designed one (appearance, text size); Connections, Sound, Focus, Privacy and Battery open the matching Android Settings page, and Privacy lists each optional access (Notifications, Calendar, Contacts, Write settings, Do not disturb) with a switch that opens its grant. Arc apps stay in the Apps menu (D-026)
+- ☑ A `SYSTEM` link and a dark/light switch in Switchboard's top right: the link is how you reach System in the running launcher
 
 **Exit:** every control on Switchboard reflects real device state and either changes it or opens the right Android screen in one tap.
+
+*Status (2026-10-27):* the exit holds on a Pixel 10 Pro emulator (Android 17): Wi-Fi, Bluetooth, Cellular, Airplane and Focus showed the real state; the Wi-Fi switch opened the Wi-Fi panel and the row followed when Wi-Fi was turned off there; Focus switched Do Not Disturb on and the Sound footer moved to `SILENT`; with Write settings granted a tap on the Light ring set the system brightness (25 % is 63 of 255, auto off) and one on the Sound ring set the media volume; without it the dial read only and its footer opened the grant screen. The `SYSTEM` link opened System and the switch flipped the theme both ways. Not yet checked on the Galaxy S20 FE, nor the "full by" time while charging, nor skip with a real player.
 
 ## Phase 6: Recents and the at-a-glance screen
 - ☐ Recents from `UsageStatsManager` (usage access grant): slats for recently used apps, tap to switch; flick up removes from Halo's list
@@ -123,5 +126,8 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - **Apps view (D-026):** built as a list reached by an up swipe on the arc. Still open: the gesture, how much Volt the list carries, and drag-to-reorder on the arc.
 - **Min SDK (D-018):** proposed Android 10 (API 29); the code uses 29.
 - **Motion spec:** none exists. DESIGN_SYSTEM §8 has interim rules.
+- **Brightness curve:** Android's brightness slider isn't linear, and Halo maps its ring straight onto the setting's 0 to 255. Low values may feel off.
+- **Ringer mode on the Sound dial:** read-only for now. Silent needs Do Not Disturb access, vibrate does not; should a tap on the footer cycle them?
+- **Radios (D-029):** Android doesn't let an app switch Wi-Fi, Bluetooth, mobile data or airplane mode, so those rows open a Settings panel.
 - **Notification actions beyond reply:** which ones Stream should show (Mark as read, Archive, Call back), and how without crowding the design.
 - **Ask Halo commands:** which commands to support first (Phase 7, D-027).
