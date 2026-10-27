@@ -41,7 +41,11 @@ class _SystemScreenState extends State<SystemScreen> {
           _Section('display', 'Display', sys.appearance.name),
           _Section('sound', 'Sound', 'Ring ${(b.quick.volume * 100).round()}'),
           _Section('focus', 'Focus', sys.focus),
-          _Section('privacy', 'Privacy', '${sys.privacyAlerts} alerts'),
+          _Section(
+            'privacy',
+            'Privacy',
+            '${sys.privacyAlerts} ${sys.privacyAlerts == 1 ? 'alert' : 'alerts'}',
+          ),
           _Section('battery', 'Battery', '${b.status.batteryPercent}%'),
         ];
 
@@ -112,12 +116,7 @@ class _SystemScreenState extends State<SystemScreen> {
   }
 
   Widget _contents(String id, HaloBackend b) {
-    if (id != 'display') {
-      return Text(
-        HaloType.upper('Not designed yet'),
-        style: HaloType.fieldLabel.copyWith(color: context.halo.muted),
-      );
-    }
+    if (id != 'display') return _shortcut(id, b);
     final sys = b.system;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,6 +151,45 @@ class _SystemScreenState extends State<SystemScreen> {
           onChanged: b.setTextSize,
           semanticLabel: 'Text size',
           semanticValue: '${sys.textSizePx} px',
+        ),
+      ],
+    );
+  }
+
+  /// What each other section hands to Android: Halo shows the state and opens
+  /// the system's own page, since an app can't change these itself.
+  static const _hints = {
+    'connections': 'Wi-Fi, Bluetooth and mobile data',
+    'sound': 'Volume, ringer and vibration',
+    'focus': 'Do Not Disturb and its schedules',
+    'privacy': 'What Halo may read. All optional',
+    'battery': 'Usage and battery saver',
+  };
+
+  Widget _shortcut(String id, HaloBackend b) {
+    final halo = context.halo;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          HaloType.upper(_hints[id] ?? ''),
+          style: HaloType.fieldLabel.copyWith(color: halo.muted),
+        ),
+        if (id == 'privacy')
+          for (final g in b.accessGrants) ...[
+            const SizedBox(height: HaloSpace.g6),
+            HaloToggleRow(
+              title: g.title,
+              subtitle: g.granted ? g.detail : '${g.detail} · allow',
+              value: g.granted,
+              onChanged: (_) => b.openAccess(g.id),
+            ),
+          ],
+        const SizedBox(height: 14),
+        HaloButton(
+          label: 'Open Android settings',
+          variant: HaloButtonVariant.secondary,
+          onPressed: () => b.openAndroidSettings(id),
         ),
       ],
     );

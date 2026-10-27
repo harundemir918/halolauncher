@@ -78,10 +78,36 @@ void main() {
     await tester.tap(find.text('Sound'));
     await tester.pump();
     expect(find.text('APPEARANCE'), findsNothing);
-    expect(find.text('NOT DESIGNED YET'), findsOneWidget);
+    expect(find.text('VOLUME, RINGER AND VIBRATION'), findsOneWidget);
     expect(find.text('OPEN'), findsOneWidget);
     // Display is closed again and shows its appearance as the status.
     expect(find.text('DARK'), findsOneWidget);
+  });
+
+  testWidgets('a section hands over to its Android Settings page', (
+    tester,
+  ) async {
+    await pumpSystem(tester);
+    await tester.tap(find.text('Focus'));
+    await tester.pump();
+    await tester.tap(find.text('Open Android settings'));
+    expect(backend.openedSettings, ['focus']);
+  });
+
+  testWidgets('Privacy lists each access; tapping one asks for it', (
+    tester,
+  ) async {
+    await pumpSystem(tester);
+    await tester.tap(find.text('Privacy'));
+    await tester.pump();
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text('SEARCH · ALLOW'), findsOneWidget);
+    await tester.tap(find.text('Contacts'));
+    await tester.pump();
+    expect(
+      backend.accessGrants.firstWhere((g) => g.id == 'contacts').granted,
+      isTrue,
+    );
   });
 
   testWidgets('tapping the open section closes it', (tester) async {

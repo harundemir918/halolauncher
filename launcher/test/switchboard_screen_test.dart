@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_sdk/halo_sdk.dart';
+import 'package:halo_launcher/shell_nav.dart';
 import 'package:halo_launcher/switchboard/switchboard_screen.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import 'support/fonts.dart';
 
-Widget app(HaloBackend backend) => MaterialApp(
-  debugShowCheckedModeBanner: false,
-  theme: HaloTheme.dark(),
-  home: Scaffold(body: SwitchboardScreen(backend: backend)),
-);
+Widget app(HaloBackend backend, {Widget Function(Widget child)? wrap}) {
+  final screen = SwitchboardScreen(backend: backend);
+  return MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: HaloTheme.dark(),
+    home: Scaffold(body: wrap == null ? screen : wrap(screen)),
+  );
+}
 
 void main() {
   setUpAll(() async {
@@ -55,6 +59,61 @@ void main() {
     await pumpBoard(tester);
     final dials = tester.widgetList<HaloDial>(find.byType(HaloDial)).toList();
     expect(dials.map((d) => d.active), [true, false]);
+  });
+
+  testWidgets('the theme switch switches dark to light by hand', (tester) async {
+    await pumpBoard(tester);
+    expect(find.text('DARK'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Dark theme'));
+    await tester.pump();
+    expect(backend.system.appearance, Appearance.light);
+  });
+
+  testWidgets('the SYSTEM link opens System', (tester) async {
+    tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    String? opened;
+    await tester.pumpWidget(
+      app(
+        MockBackend(),
+        wrap: (child) => ShellNav(
+          current: 'switchboard',
+          open: (screen) => opened = screen,
+          child: child,
+        ),
+      ),
+    );
+    await tester.tap(find.text('SYSTEM'));
+    expect(opened, 'system');
+  });
+
+  testWidgets('the Light footer turns auto brightness off and on', (
+    tester,
+  ) async {
+    await pumpBoard(tester);
+    await tester.tap(find.text('AUTO · ON'));
+    await tester.pump();
+    expect(backend.quick.brightnessAuto, isFalse);
+    expect(find.text('MANUAL'), findsOneWidget);
+    await tester.tap(find.text('MANUAL'));
+    await tester.pump();
+    expect(backend.quick.brightnessAuto, isTrue);
+  });
+
+  testWidgets('without Write settings the Light dial only reads', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final locked = _ReadOnlyBrightness();
+    await tester.pumpWidget(app(locked));
+    final light = tester.widget<HaloDial>(find.byType(HaloDial).first);
+    expect(light.onChanged, isNull);
+    expect(find.text('TAP TO ALLOW'), findsOneWidget);
+    await tester.tap(find.text('TAP TO ALLOW'));
+    expect(locked.asked, 1);
   });
 
   testWidgets('dragging the light dial sets a manual level', (tester) async {
@@ -119,4 +178,24 @@ void main() {
       matchesGoldenFile('goldens/switchboard.png'),
     );
   }, tags: 'golden');
+}
+
+/// A backend whose brightness can't be written, like a phone before the user
+/// grants Write settings; asking to change it counts as opening that screen.
+class _ReadOnlyBrightness extends MockBackend {
+  int asked = 0;
+
+  @override
+  QuickSettings get quick => QuickSettings(
+    brightness: super.quick.brightness,
+    brightnessAuto: super.quick.brightnessAuto,
+    brightnessWritable: false,
+    volume: super.quick.volume,
+    volumeFooter: super.quick.volumeFooter,
+    toggles: super.quick.toggles,
+    media: super.quick.media,
+  );
+
+  @override
+  void setBrightnessAuto(bool auto) => asked++;
 }

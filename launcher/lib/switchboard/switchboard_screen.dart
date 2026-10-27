@@ -3,6 +3,7 @@ import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
 
 import '../backend_builder.dart';
+import '../shell_nav.dart';
 import '../status_bar.dart';
 
 /// Switchboard: quick controls that look like controls. Two ring dials, a
@@ -40,6 +41,20 @@ class SwitchboardScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              // Top right, inside every phone's frame (it is shorter than 844 on
+              // a phone with a cutout and a nav bar, so nothing sits below the
+              // battery cells).
+              Positioned(
+                top: 60,
+                right: HaloSpace.gutter - 8,
+                child: Row(
+                  children: [
+                    const _SystemLink(),
+                    const SizedBox(width: 6),
+                    _ThemeSwitch(backend: b),
+                  ],
+                ),
+              ),
               Positioned(
                 top: 116,
                 left: HaloSpace.gutter,
@@ -51,8 +66,18 @@ class SwitchboardScreen extends StatelessWidget {
                         caption: 'Light',
                         value: q.brightness,
                         active: q.brightnessAuto,
-                        footer: q.brightnessAuto ? 'Auto · on' : 'Manual',
-                        onChanged: b.setBrightness,
+                        footer: !q.brightnessWritable
+                            ? 'Tap to allow'
+                            : q.brightnessAuto
+                            ? 'Auto · on'
+                            : 'Manual',
+                        // Without Android's Write settings grant the dial only
+                        // reads; the footer opens the screen that gives it.
+                        onChanged: q.brightnessWritable
+                            ? b.setBrightness
+                            : null,
+                        onFooterTap: () =>
+                            b.setBrightnessAuto(!q.brightnessAuto),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -97,6 +122,8 @@ class SwitchboardScreen extends StatelessWidget {
                     progress: media.progress,
                     playing: media.playing,
                     onPlayPause: () => b.setPlaying(!media.playing),
+                    onNext: () => b.skipMedia(next: true),
+                    onPrevious: () => b.skipMedia(next: false),
                   ),
                 ),
               Positioned(
@@ -132,6 +159,66 @@ class SwitchboardScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Dark or light, right on the Switchboard. On means dark, whatever Auto
+/// resolves to now; flipping it sets that appearance by hand (System has Auto).
+class _ThemeSwitch extends StatelessWidget {
+  const _ThemeSwitch({required this.backend});
+
+  final HaloBackend backend;
+
+  @override
+  Widget build(BuildContext context) {
+    final halo = context.halo;
+    final dark = !halo.isLight;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          HaloType.upper(dark ? 'Dark' : 'Light'),
+          style: HaloType.footer.copyWith(color: halo.muted),
+        ),
+        const SizedBox(width: 10),
+        HaloSwitch(
+          value: dark,
+          semanticLabel: 'Dark theme',
+          onChanged: (on) =>
+              backend.setAppearance(on ? Appearance.dark : Appearance.light),
+        ),
+      ],
+    );
+  }
+}
+
+/// The way into System, Halo's settings.
+class _SystemLink extends StatelessWidget {
+  const _SystemLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final open = ShellNav.maybeOf(context)?.open;
+    return Semantics(
+      button: true,
+      label: 'System',
+      onTap: open == null ? null : () => open('system'),
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: open == null ? null : () => open('system'),
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            alignment: Alignment.center,
+            child: Text(
+              HaloType.upper('System'),
+              style: HaloType.status.copyWith(color: context.halo.text),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
