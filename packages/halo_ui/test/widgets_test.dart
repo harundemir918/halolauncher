@@ -156,6 +156,23 @@ void main() {
   });
 
   group('HaloButton', () {
+    testWidgets('a trailing chevron sits after the label', (tester) async {
+      await pumpHalo(
+        tester,
+        HaloButton(
+          label: 'System',
+          size: HaloButtonSize.small,
+          variant: HaloButtonVariant.secondary,
+          trailing: const HaloIcon(HaloIcons.chevronRight, size: 14),
+          onPressed: () {},
+        ),
+      );
+      final label = tester.getRect(find.text('System'));
+      final icon = tester.getRect(find.byType(HaloIcon));
+      expect(icon.left, greaterThan(label.right));
+      expect(tester.getSize(find.byType(HaloButton)).height, 32);
+    });
+
     testWidgets('hugs its label instead of filling the row', (tester) async {
       await pumpHalo(
         tester,

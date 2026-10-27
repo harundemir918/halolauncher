@@ -32,6 +32,7 @@ class HaloButton extends StatelessWidget {
     this.variant = HaloButtonVariant.primary,
     this.size = HaloButtonSize.regular,
     this.leading,
+    this.trailing,
     this.onLongPress,
   });
 
@@ -45,6 +46,9 @@ class HaloButton extends StatelessWidget {
 
   /// Optional widget before the label (Ask Halo's Volt square).
   final Widget? leading;
+
+  /// Optional widget after the label (a chevron for "opens another screen").
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -101,6 +105,10 @@ class HaloButton extends StatelessWidget {
                 children: [
                   if (leading != null) ...[leading!, const SizedBox(width: 10)],
                   Text(label, style: style.copyWith(color: textColor)),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 6),
+                    trailing!,
+                  ],
                 ],
               ),
             ),
