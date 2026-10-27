@@ -27,6 +27,8 @@ void main() {
   Map<String, Object?>? playing;
   late String privateSpace;
   late Map<String, Object?> quick;
+  late bool usageAllowed;
+  late List<Map<String, Object>> usage;
   late Map<String, Object> battery;
 
   setUp(() {
@@ -43,6 +45,8 @@ void main() {
     posted = [];
     playing = null;
     privateSpace = 'none';
+    usageAllowed = false;
+    usage = [];
     battery = {'level': 0.82, 'charging': false, 'fullInMs': -1};
     quick = {
       'brightness': 0.5,
@@ -63,11 +67,17 @@ void main() {
         'apps' => installed,
         'icons' => {
           for (final id in (call.arguments as Map)['ids'] as List)
-            id: {'icon': icon, if (id == 'com.a/.Main') 'mono': mono},
+            id: {
+              'icon': icon,
+              if (id == 'com.a/.Main') 'mono': mono,
+              if (id == 'com.a/.Main') 'accent': 0xFF336699,
+            },
         },
         'launch' => (call.arguments as Map)['id'] == 'com.a/.Main',
         'battery' => battery,
         'quick' => quick,
+        'canReadUsage' => usageAllowed,
+        'recentApps' => usage,
         'isDefaultHome' => false,
         'requestDefaultHome' => null,
         'defaultApps' => defaults,
@@ -124,6 +134,7 @@ void main() {
         'setBrightnessAuto' ||
         'setVolume' ||
         'setFocus' ||
+        'requestUsageAccess' ||
         'requestWriteSettings' ||
         'requestPolicyAccess' ||
         'openSystemSettings' ||
@@ -674,9 +685,10 @@ void main() {
             'contacts': false,
             'brightness': true,
             'focus': false,
+            'usage': false,
           },
         );
-        expect(b.system.privacyAlerts, 3);
+        expect(b.system.privacyAlerts, 4);
       },
     );
 
@@ -685,8 +697,8 @@ void main() {
       final b = await AndroidBackend.create();
       addTearDown(b.dispose);
       expect(b.system.focus, 'Do not disturb');
-      expect(b.accessGrants.last.granted, isTrue);
-      expect(b.system.privacyAlerts, 3);
+      expect(b.accessGrants.firstWhere((g) => g.id == 'focus').granted, isTrue);
+      expect(b.system.privacyAlerts, 4);
     });
 
     test('giving an access opens its own screen', () async {
@@ -706,6 +718,84 @@ void main() {
       await b.openAndroidSettings('display');
       expect(calls.last.method, 'openSystemSettings');
       expect(calls.last.arguments, {'section': 'display'});
+    });
+  });
+
+  group('recents', () {
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    test(
+      'without usage access Recents is empty and the grant is open',
+      () async {
+        final b = await AndroidBackend.create();
+        addTearDown(b.dispose);
+        expect(b.canReadUsage, isFalse);
+        expect(b.recents, isEmpty);
+        await b.requestUsageAccess();
+        expect(calls.last.method, 'requestUsageAccess');
+        await b.openAccess('usage');
+        expect(calls.last.method, 'requestUsageAccess');
+      },
+    );
+
+    test(
+      "used apps come newest first, as the owner's launchable apps",
+      () async {
+        usageAllowed = true;
+        usage = [
+          {'package': 'com.b', 'time': now - 1000},
+          {'package': 'com.unknown', 'time': now - 2000},
+          {'package': 'com.w', 'time': now - 3000},
+          {'package': 'com.a', 'time': now - 4000},
+        ];
+        final b = await AndroidBackend.create();
+        addTearDown(b.dispose);
+        // com.unknown has no launcher entry; com.w is only in the work profile.
+        expect(b.recents.map((a) => a.id), ['com.b/.Main', 'com.a/.Main']);
+        expect(b.accessGrants.last.granted, isTrue);
+      },
+    );
+
+    test('closing drops it, saved, until it is used again', () async {
+      usageAllowed = true;
+      usage = [
+        {'package': 'com.a', 'time': now - 4000},
+        {'package': 'com.b', 'time': now - 1000},
+      ];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      b.closeRecent('com.a/.Main');
+      expect(b.recents.map((a) => a.id), ['com.b/.Main']);
+      expect(prefs['recentsDropped'], contains('com.a'));
+      final c = await AndroidBackend.create();
+      addTearDown(c.dispose);
+      expect(c.recents.map((a) => a.id), ['com.b/.Main']);
+      usage = [
+        {'package': 'com.a', 'time': now + 60000},
+        {'package': 'com.b', 'time': now - 1000},
+      ];
+      final d = await AndroidBackend.create();
+      addTearDown(d.dispose);
+      expect(d.recents.map((a) => a.id), ['com.a/.Main', 'com.b/.Main']);
+    });
+
+    test('clear all drops every one', () async {
+      usageAllowed = true;
+      usage = [
+        {'package': 'com.a', 'time': now - 4000},
+        {'package': 'com.b', 'time': now - 1000},
+      ];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      b.clearRecents();
+      expect(b.recents, isEmpty);
+    });
+
+    test("an icon's accent color reaches the app", () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      await Future<void>.delayed(Duration.zero);
+      expect(b.apps.first.accent, 0xFF336699);
     });
   });
 }

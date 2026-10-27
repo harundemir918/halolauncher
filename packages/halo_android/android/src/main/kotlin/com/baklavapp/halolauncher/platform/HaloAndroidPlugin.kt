@@ -27,6 +27,8 @@ import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
@@ -110,6 +112,8 @@ class HaloAndroidPlugin :
     }
 
     private val switchboard by lazy { SwitchboardController(context, main) { emit(it) } }
+
+    private val usage by lazy { UsageController(context) }
 
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = emit("battery")
@@ -320,6 +324,12 @@ class HaloAndroidPlugin :
                 }
                 result.success(null)
             }
+            "canReadUsage" -> result.success(usage.canRead())
+            "requestUsageAccess" -> {
+                usage.request()
+                result.success(null)
+            }
+            "recentApps" -> result.success(usage.recent())
             "quick" -> result.success(switchboard.read())
             "setBrightness" -> {
                 switchboard.setBrightness(call.argument<Double>("value") ?: 0.5)
@@ -970,9 +980,9 @@ class HaloAndroidPlugin :
      * monochrome layer (Android 13+) when it has one, else one derived from
      * the icon ([derivedMono]). The arc draws every app from it (D-025).
      */
-    private fun icons(ids: List<String>, size: Int): Map<String, Map<String, ByteArray>> {
+    private fun icons(ids: List<String>, size: Int): Map<String, Map<String, Any>> {
         val byId = activities().associateBy(::idOf)
-        val out = HashMap<String, Map<String, ByteArray>>()
+        val out = HashMap<String, Map<String, Any>>()
         for (id in ids) {
             val info = byId[id] ?: continue
             val drawable = try {
@@ -990,12 +1000,41 @@ class HaloAndroidPlugin :
             } catch (e: Exception) {
                 null
             }
+            val iconPng = png(drawable, size)
             out[id] = buildMap {
-                put("icon", png(drawable, size))
+                put("icon", iconPng)
+                accentOf(iconPng)?.let { put("accent", it) }
                 if (mono != null) put("mono", mono)
             }
         }
         return out
+    }
+
+    /**
+     * The icon's main color as ARGB: the average of its saturated, opaque
+     * pixels, else of all opaque ones. Null for an empty icon. Recents tints
+     * a slat with it.
+     */
+    private fun accentOf(png: ByteArray): Int? {
+        val bitmap = BitmapFactory.decodeByteArray(png, 0, png.size) ?: return null
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val hsv = FloatArray(3)
+        var r = 0L; var g = 0L; var b = 0L; var n = 0
+        var ar = 0L; var ag = 0L; var ab = 0L; var an = 0
+        for (p in pixels) {
+            if (Color.alpha(p) < 200) continue
+            ar += Color.red(p); ag += Color.green(p); ab += Color.blue(p); an++
+            Color.colorToHSV(p, hsv)
+            if (hsv[1] > 0.35f && hsv[2] > 0.25f) {
+                r += Color.red(p); g += Color.green(p); b += Color.blue(p); n++
+            }
+        }
+        return when {
+            n > 0 -> Color.rgb((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
+            an > 0 -> Color.rgb((ar / an).toInt(), (ag / an).toInt(), (ab / an).toInt())
+            else -> null
+        }
     }
 
     /** A monochrome layer, full bleed and cropped like [png], as a clean mask. */

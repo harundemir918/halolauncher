@@ -41,6 +41,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       b._loadNotifications(),
       b._loadMedia(),
       b._loadQuick(),
+      b._loadUsage(),
     ]);
     await b._loadArc();
     b._subscription = _events.receiveBroadcastStream().listen(b._onEvent);
@@ -107,6 +108,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           _loadNotifications(),
           _loadMedia(),
           _loadQuick(),
+          _loadUsage(),
         ]).then((_) => _notify()),
       );
     }
@@ -152,6 +154,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   List<HaloAppInfo> _apps = const [];
   final _icons = <String, Uint8List>{};
   final _monos = <String, Uint8List>{};
+  final _accents = <String, int>{};
 
   @override
   List<HaloAppInfo> get apps => _apps;
@@ -167,6 +170,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           label: a['label'] as String,
           icon: _icons[a['id']],
           monoIcon: _monos[a['id']],
+          accent: _accents[a['id']],
           glyph: _glyphOf(a['id'] as String),
           work: a['work'] as bool? ?? false,
           privateSpace: a['privateSpace'] as bool? ?? false,
@@ -207,8 +211,12 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     for (final MapEntry(key: id, value: i) in icons.entries) {
       if (i['icon'] case final Uint8List icon) _icons[id] = icon;
       if (i['mono'] case final Uint8List mono) _monos[id] = mono;
+      if (i['accent'] case final int accent) _accents[id] = accent;
     }
-    _apps = [for (final a in _apps) a.withIcons(_icons[a.id], _monos[a.id])];
+    _apps = [
+      for (final a in _apps)
+        a.withIcons(_icons[a.id], _monos[a.id], _accents[a.id]),
+    ];
     _notify();
   }
 
@@ -623,6 +631,12 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       detail: 'Focus row',
       granted: _focusAccess,
     ),
+    AccessGrant(
+      id: 'usage',
+      title: 'Usage access',
+      detail: 'Recents',
+      granted: _canReadUsage,
+    ),
   ];
 
   @override
@@ -632,6 +646,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     'contacts' => requestContactsAccess(),
     'brightness' => _methods.invokeMethod<void>('requestWriteSettings'),
     'focus' => _methods.invokeMethod<void>('requestPolicyAccess'),
+    'usage' => requestUsageAccess(),
     _ => Future<void>.value(),
   };
 
@@ -709,16 +724,80 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     ];
   }
 
-  // Recents (Phase 6)
+  // Recents: the apps used last, from Android's usage events (usage access).
+  // "Closing" one only drops it from Halo's list: Android gives a launcher no
+  // way to close another app. A dropped app returns once it is used again.
+
+  bool _canReadUsage = false;
+  List<({String package, int time})> _usage = const [];
+
+  /// Package to the time it was dropped (epoch ms), saved as `recentsDropped`.
+  Map<String, int> _dropped = {};
 
   @override
-  List<HaloAppInfo> get recents => const [];
+  bool get canReadUsage => _canReadUsage;
 
   @override
-  void closeRecent(String id) {}
+  Future<void> requestUsageAccess() =>
+      _methods.invokeMethod<void>('requestUsageAccess');
+
+  Future<void> _loadUsage() async {
+    _canReadUsage = await _methods.invokeMethod<bool>('canReadUsage') ?? false;
+    final raw = _canReadUsage
+        ? await _methods.invokeListMethod<Map>('recentApps') ?? const []
+        : const <Map>[];
+    _usage = [
+      for (final e in raw)
+        (package: e['package'] as String, time: (e['time'] as num).toInt()),
+    ];
+    final saved = await _methods.invokeMethod<String>('getPref', {
+      'key': 'recentsDropped',
+    });
+    if (saved != null) {
+      _dropped = (jsonDecode(saved) as Map).cast<String, int>();
+    }
+  }
+
+  /// The owner's launchable app for a package, if there is one.
+  HaloAppInfo? _appOf(String package) {
+    for (final a in _apps) {
+      if (!a.work && !a.privateSpace && a.id.split('/').first == package) {
+        return a;
+      }
+    }
+    return null;
+  }
 
   @override
-  void clearRecents() {}
+  List<HaloAppInfo> get recents => [
+    for (final u in _usage)
+      if (u.time > (_dropped[u.package] ?? 0)) ?_appOf(u.package),
+  ];
+
+  void _saveDropped() => unawaited(
+    _methods.invokeMethod<void>('setPref', {
+      'key': 'recentsDropped',
+      'value': jsonEncode(_dropped),
+    }),
+  );
+
+  @override
+  void closeRecent(String id) {
+    final package = id.split('/').first;
+    _dropped[package] = DateTime.now().millisecondsSinceEpoch;
+    _saveDropped();
+    _notify();
+  }
+
+  @override
+  void clearRecents() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final a in recents) {
+      _dropped[a.id.split('/').first] = now;
+    }
+    _saveDropped();
+    _notify();
+  }
 
   // Notifications
 
