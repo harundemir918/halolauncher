@@ -246,6 +246,42 @@ void main() {
       expect(b.quick.toggles.firstWhere((t) => t.id == 'wifi').on, isFalse);
     });
 
+    test('access grants: giving one notifies and counts as granted', () async {
+      final b = MockBackend();
+      expect(
+        b.accessGrants.where((g) => !g.granted).length,
+        b.system.privacyAlerts,
+      );
+      final changed = b.changes.first;
+      await b.openAccess('contacts');
+      await changed;
+      expect(
+        b.accessGrants.firstWhere((g) => g.id == 'contacts').granted,
+        isTrue,
+      );
+    });
+
+    test('Android settings pages are asked for by section', () async {
+      final b = MockBackend();
+      await b.openAndroidSettings('sound');
+      expect(b.openedSettings, ['sound']);
+    });
+
+    test('auto brightness turns on and off', () {
+      final b = MockBackend();
+      b.setBrightnessAuto(false);
+      expect(b.quick.brightnessAuto, isFalse);
+      b.setBrightnessAuto(true);
+      expect(b.quick.brightnessAuto, isTrue);
+    });
+
+    test('skipping starts the next track from the top', () {
+      final b = MockBackend();
+      b.skipMedia(next: true);
+      expect(b.quick.media!.progress, 0);
+      expect(b.quick.media!.playing, isTrue);
+    });
+
     test('play and pause', () {
       final b = MockBackend();
       b.setPlaying(false);

@@ -21,12 +21,29 @@ abstract interface class HaloBackend {
   /// Sets brightness by hand, which turns auto brightness off.
   void setBrightness(double value);
 
+  /// Turns auto brightness on or off.
+  void setBrightnessAuto(bool auto);
+
   void setVolume(double value);
 
   void setPlaying(bool playing);
 
+  /// Skips to the next track, or the previous one.
+  void skipMedia({required bool next});
+
   /// System (settings) state.
   SystemState get system;
+
+  /// The optional accesses Halo can be given, granted or not.
+  List<AccessGrant> get accessGrants;
+
+  /// Opens the way to give [id] (a permission dialog or the Android screen).
+  /// Android only lets the user take an access back, in Settings.
+  Future<void> openAccess(String id);
+
+  /// Opens Android's own Settings page for a System section: `connections`,
+  /// `display`, `sound`, `focus`, `privacy` or `battery`.
+  Future<void> openAndroidSettings(String section);
 
   void setAppearance(Appearance appearance);
 

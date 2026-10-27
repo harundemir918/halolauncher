@@ -105,6 +105,57 @@ class MockBackend implements HaloBackend {
   @override
   SystemState get system => _system;
 
+  var _grants = const [
+    AccessGrant(
+      id: 'notifications',
+      title: 'Notifications',
+      detail: 'Stream and Home',
+      granted: true,
+    ),
+    AccessGrant(
+      id: 'calendar',
+      title: 'Calendar',
+      detail: 'Home, today',
+      granted: true,
+    ),
+    AccessGrant(
+      id: 'contacts',
+      title: 'Contacts',
+      detail: 'Search',
+      granted: false,
+    ),
+    AccessGrant(
+      id: 'brightness',
+      title: 'Write settings',
+      detail: 'Light dial',
+      granted: false,
+    ),
+    AccessGrant(
+      id: 'focus',
+      title: 'Do not disturb',
+      detail: 'Focus row',
+      granted: true,
+    ),
+  ];
+
+  @override
+  List<AccessGrant> get accessGrants => _grants;
+
+  /// The sections whose Android page was asked for, for tests.
+  final openedSettings = <String>[];
+
+  @override
+  Future<void> openAccess(String id) async {
+    _grants = [
+      for (final g in _grants) g.id == id ? g.copyWith(granted: true) : g,
+    ];
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> openAndroidSettings(String section) async =>
+      openedSettings.add(section);
+
   @override
   void setAppearance(Appearance appearance) {
     _system = _system.copyWith(appearance: appearance);
@@ -115,6 +166,17 @@ class MockBackend implements HaloBackend {
   void setTextSize(double value) {
     _system = _system.copyWith(textSize: value.clamp(0.0, 1.0));
     _changes.add(null);
+  }
+
+  @override
+  void setBrightnessAuto(bool auto) =>
+      _update(_quick.copyWith(brightnessAuto: auto));
+
+  @override
+  void skipMedia({required bool next}) {
+    final m = _quick.media;
+    if (m == null) return;
+    _update(_quick.copyWith(media: m.copyWith(progress: 0, playing: true)));
   }
 
   @override

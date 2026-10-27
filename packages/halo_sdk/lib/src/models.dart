@@ -276,10 +276,15 @@ class QuickSettings {
     required this.volumeFooter,
     required this.toggles,
     this.media,
+    this.brightnessWritable = true,
   });
 
   /// 0 to 1.
   final double brightness;
+
+  /// Whether Halo may set brightness (Android's Write settings grant). When
+  /// not, the dial only reads, and touching it opens the grant screen.
+  final bool brightnessWritable;
 
   /// Auto brightness. Setting a level by hand turns it off.
   final bool brightnessAuto;
@@ -299,6 +304,7 @@ class QuickSettings {
     List<QuickToggle>? toggles,
     MediaSession? media,
   }) => QuickSettings(
+    brightnessWritable: brightnessWritable,
     brightness: brightness ?? this.brightness,
     brightnessAuto: brightnessAuto ?? this.brightnessAuto,
     volume: volume ?? this.volume,
@@ -368,12 +374,41 @@ class SystemState {
       (minTextSize + textSize.clamp(0.0, 1.0) * (maxTextSize - minTextSize))
           .round();
 
-  SystemState copyWith({Appearance? appearance, double? textSize}) =>
-      SystemState(
-        account: account,
-        appearance: appearance ?? this.appearance,
-        textSize: textSize ?? this.textSize,
-        focus: focus,
-        privacyAlerts: privacyAlerts,
-      );
+  SystemState copyWith({
+    Appearance? appearance,
+    double? textSize,
+    String? focus,
+    int? privacyAlerts,
+  }) => SystemState(
+    account: account,
+    appearance: appearance ?? this.appearance,
+    textSize: textSize ?? this.textSize,
+    focus: focus ?? this.focus,
+    privacyAlerts: privacyAlerts ?? this.privacyAlerts,
+  );
+}
+
+/// One optional access Halo can be given (notifications, calendar, ...). All
+/// are optional: without one, the screen it feeds still works.
+class AccessGrant {
+  const AccessGrant({
+    required this.id,
+    required this.title,
+    required this.detail,
+    required this.granted,
+  });
+
+  final String id;
+  final String title;
+
+  /// What it is for (`Stream and Switchboard`).
+  final String detail;
+  final bool granted;
+
+  AccessGrant copyWith({bool? granted}) => AccessGrant(
+    id: id,
+    title: title,
+    detail: detail,
+    granted: granted ?? this.granted,
+  );
 }
