@@ -10,10 +10,10 @@ import 'package:halo_sdk/halo_sdk.dart';
 /// Serves the clock, installed apps in every profile (with icons), the arc
 /// the user keeps, launching, shortcuts, App info and uninstall, battery, the
 /// default home app, Home presses, today's calendar, the phone's
-/// notifications and the playing media. The arc, appearance, text size and
-/// when Stream was last seen are saved on the phone. Recents is empty until
-/// Phase 6, and Switchboard's dials and toggles hold their values only in
-/// memory until Phase 5. Empty, not invented (CLAUDE.md rule 1).
+/// notifications and the playing media, and the Switchboard's brightness,
+/// volume, connection and Do Not Disturb state. The arc, appearance, text size
+/// and when Stream was last seen are saved on the phone. Recents is empty until
+/// Phase 6. Empty, not invented (CLAUDE.md rule 1).
 class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   AndroidBackend._();
 
@@ -40,6 +40,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       b._loadCalendar(),
       b._loadNotifications(),
       b._loadMedia(),
+      b._loadQuick(),
     ]);
     await b._loadArc();
     b._subscription = _events.receiveBroadcastStream().listen(b._onEvent);
@@ -83,6 +84,11 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
         );
       case 'media':
         unawaited(_loadMedia().then((_) => _notify()));
+      case 'quick':
+        // A dial being dragged already shows its value; skip the echo.
+        if (DateTime.now().difference(_dialTouched) > _echoWindow) {
+          unawaited(_loadQuick().then((_) => _notify()));
+        }
       case 'home':
         _home.add(null);
     }
@@ -100,6 +106,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           _loadCalendar(),
           _loadNotifications(),
           _loadMedia(),
+          _loadQuick(),
         ]).then((_) => _notify()),
       );
     }
@@ -385,17 +392,36 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   // Status
 
   double _battery = 0;
+  DateTime? _fullAt;
 
   @override
-  DeviceStatus get status => DeviceStatus(battery: _battery, network: '');
+  DeviceStatus get status {
+    final at = _fullAt;
+    return DeviceStatus(
+      battery: _battery,
+      network: '',
+      fullBy: at == null
+          ? null
+          : '${at.hour.toString().padLeft(2, '0')}:'
+                '${at.minute.toString().padLeft(2, '0')}',
+    );
+  }
 
   Future<void> _loadBattery() async {
     final b = await _methods.invokeMapMethod<String, Object>('battery');
     _battery = (b?['level'] as num?)?.toDouble() ?? 0;
+    // Android's estimate to full, only while charging and once it has one.
+    final ms = (b?['fullInMs'] as num?)?.toInt() ?? -1;
+    _fullAt = b?['charging'] == true && ms > 0
+        ? DateTime.now().add(Duration(milliseconds: ms))
+        : null;
   }
 
-  // Switchboard: the dials and toggles are held in memory until Phase 5; the
-  // media strip is the phone's playing session.
+  // Switchboard: the phone's brightness, media volume, radios and Do Not
+  // Disturb, plus the playing media session. Android lets an app set the
+  // volume and Do Not Disturb (with a grant) and brightness (with Write
+  // settings); the radios it only lets the user switch, so those rows open
+  // the matching Settings panel and read the new state back.
 
   QuickSettings _quick = const QuickSettings(
     brightness: 0.5,
@@ -405,17 +431,60 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     toggles: [],
   );
 
+  bool _focusAccess = false;
+
+  /// Local dial moves and the echo from the system's own change event.
+  static const _echoWindow = Duration(milliseconds: 400);
+  DateTime _dialTouched = DateTime.fromMillisecondsSinceEpoch(0);
+
   MediaSession? _media;
 
   @override
-  QuickSettings get quick => QuickSettings(
-    brightness: _quick.brightness,
-    brightnessAuto: _quick.brightnessAuto,
-    volume: _quick.volume,
-    volumeFooter: _quick.volumeFooter,
-    toggles: _quick.toggles,
-    media: _media,
-  );
+  QuickSettings get quick => _quick.copyWith(media: _media);
+
+  Future<void> _loadQuick() async {
+    final q = await _methods.invokeMapMethod<String, Object?>('quick');
+    if (q == null) return;
+    Map<String, Object?> row(String id) =>
+        (q[id] as Map?)?.cast<String, Object?>() ?? const {};
+    QuickToggle toggle(String id, String title, String Function(Map) detail) =>
+        QuickToggle(
+          id: id,
+          title: title,
+          detail: detail(row(id)),
+          on: row(id)['on'] == true,
+        );
+    String state(Map r) => switch (r['state']) {
+      'connected' => 'Connected',
+      'on' => 'On',
+      _ => 'Off',
+    };
+    final focus = row('focus');
+    _focusAccess = focus['canChange'] == true;
+    _quick = QuickSettings(
+      brightness: (q['brightness'] as num?)?.toDouble() ?? 0.5,
+      brightnessAuto: q['brightnessAuto'] == true,
+      brightnessWritable: q['canWriteSettings'] == true,
+      volume: (q['volume'] as num?)?.toDouble() ?? 0.5,
+      volumeFooter: 'Media · ${q['ringer'] ?? 'ring'}',
+      toggles: [
+        toggle('wifi', 'Wi-Fi', state),
+        toggle('bluetooth', 'Bluetooth', state),
+        toggle('cellular', 'Cellular', state),
+        toggle('airplane', 'Airplane', state),
+        QuickToggle(
+          id: 'focus',
+          title: 'Focus',
+          detail: focus['on'] == true
+              ? 'Do not disturb'
+              : focus['canChange'] == true
+              ? 'Off'
+              : 'Allow access',
+          on: focus['on'] == true,
+        ),
+      ],
+    );
+  }
 
   Future<void> _loadMedia() async {
     final m = await _methods.invokeMapMethod<String, Object?>('media');
@@ -447,22 +516,51 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   }
 
   @override
-  void setToggle(String id, bool on) {}
+  void setToggle(String id, bool on) {
+    if (id == 'focus') {
+      unawaited(_methods.invokeMethod<void>('setFocus', {'on': on}));
+    } else {
+      unawaited(_methods.invokeMethod<void>('openRadio', {'id': id}));
+    }
+  }
 
   @override
   void setBrightness(double value) {
-    _quick = _quick.copyWith(
-      brightness: value.clamp(0.0, 1.0),
-      brightnessAuto: false,
-    );
+    if (!_quick.brightnessWritable) {
+      unawaited(
+        _methods.invokeMethod<void>('setBrightnessAuto', {'auto': true}),
+      );
+      return;
+    }
+    final v = value.clamp(0.0, 1.0);
+    _dialTouched = DateTime.now();
+    _quick = _quick.copyWith(brightness: v, brightnessAuto: false);
     _notify();
+    unawaited(_methods.invokeMethod<void>('setBrightness', {'value': v}));
+  }
+
+  @override
+  void setBrightnessAuto(bool auto) {
+    // Without the Write settings grant this opens the screen that gives it.
+    if (_quick.brightnessWritable) {
+      _quick = _quick.copyWith(brightnessAuto: auto);
+      _notify();
+    }
+    unawaited(_methods.invokeMethod<void>('setBrightnessAuto', {'auto': auto}));
   }
 
   @override
   void setVolume(double value) {
-    _quick = _quick.copyWith(volume: value.clamp(0.0, 1.0));
+    final v = value.clamp(0.0, 1.0);
+    _dialTouched = DateTime.now();
+    _quick = _quick.copyWith(volume: v);
     _notify();
+    unawaited(_methods.invokeMethod<void>('setVolume', {'value': v}));
   }
+
+  @override
+  void skipMedia({required bool next}) =>
+      unawaited(_methods.invokeMethod<void>('skip', {'next': next}));
 
   @override
   void setPlaying(bool playing) {
@@ -486,7 +584,60 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   );
 
   @override
-  SystemState get system => _system;
+  SystemState get system => _system.copyWith(
+    focus: _quick.toggles.any((t) => t.id == 'focus' && t.on)
+        ? 'Do not disturb'
+        : 'Off',
+    privacyAlerts: accessGrants.where((g) => !g.granted).length,
+  );
+
+  @override
+  List<AccessGrant> get accessGrants => [
+    AccessGrant(
+      id: 'notifications',
+      title: 'Notifications',
+      detail: 'Stream and Home',
+      granted: canReadNotifications,
+    ),
+    AccessGrant(
+      id: 'calendar',
+      title: 'Calendar',
+      detail: 'Home, today',
+      granted: canReadCalendar,
+    ),
+    AccessGrant(
+      id: 'contacts',
+      title: 'Contacts',
+      detail: 'Search',
+      granted: canSearchContacts,
+    ),
+    AccessGrant(
+      id: 'brightness',
+      title: 'Write settings',
+      detail: 'Light dial',
+      granted: _quick.brightnessWritable,
+    ),
+    AccessGrant(
+      id: 'focus',
+      title: 'Do not disturb',
+      detail: 'Focus row',
+      granted: _focusAccess,
+    ),
+  ];
+
+  @override
+  Future<void> openAccess(String id) => switch (id) {
+    'notifications' => requestNotificationAccess(),
+    'calendar' => requestCalendarAccess(),
+    'contacts' => requestContactsAccess(),
+    'brightness' => _methods.invokeMethod<void>('requestWriteSettings'),
+    'focus' => _methods.invokeMethod<void>('requestPolicyAccess'),
+    _ => Future<void>.value(),
+  };
+
+  @override
+  Future<void> openAndroidSettings(String section) =>
+      _methods.invokeMethod<void>('openSystemSettings', {'section': section});
 
   Future<void> _loadSettings() async {
     Future<String?> get(String key) =>

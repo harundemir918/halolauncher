@@ -109,6 +109,8 @@ class HaloAndroidPlugin :
         override fun onPackagesUnavailable(names: Array<out String>, user: UserHandle, replacing: Boolean) = emit("apps")
     }
 
+    private val switchboard by lazy { SwitchboardController(context, main) { emit(it) } }
+
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = emit("battery")
     }
@@ -192,6 +194,7 @@ class HaloAndroidPlugin :
         sink = events
         launcherApps.registerCallback(appsCallback, main)
         context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        switchboard.register()
         val profiles = IntentFilter().apply {
             addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
             addAction(Intent.ACTION_MANAGED_PROFILE_UNAVAILABLE)
@@ -218,6 +221,7 @@ class HaloAndroidPlugin :
     override fun onCancel(arguments: Any?) {
         launcherApps.unregisterCallback(appsCallback)
         context.unregisterReceiver(batteryReceiver)
+        switchboard.unregister()
         context.unregisterReceiver(profileReceiver)
         context.contentResolver.unregisterContentObserver(calendarObserver)
         HaloNotificationService.onChange = null
@@ -314,6 +318,43 @@ class HaloAndroidPlugin :
                 call.argument<String>("id")?.toLongOrNull()?.let {
                     openView(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, it))
                 }
+                result.success(null)
+            }
+            "quick" -> result.success(switchboard.read())
+            "setBrightness" -> {
+                switchboard.setBrightness(call.argument<Double>("value") ?: 0.5)
+                result.success(null)
+            }
+            "setBrightnessAuto" -> {
+                switchboard.setBrightnessAuto(call.argument<Boolean>("auto") ?: true)
+                result.success(null)
+            }
+            "setVolume" -> {
+                switchboard.setVolume(call.argument<Double>("value") ?: 0.5)
+                result.success(null)
+            }
+            "setFocus" -> {
+                switchboard.setFocus(call.argument<Boolean>("on") ?: false)
+                result.success(null)
+            }
+            "openRadio" -> {
+                switchboard.openRadio(call.argument<String>("id").orEmpty())
+                result.success(null)
+            }
+            "requestWriteSettings" -> {
+                switchboard.requestWriteSettings()
+                result.success(null)
+            }
+            "requestPolicyAccess" -> {
+                switchboard.requestPolicyAccess()
+                result.success(null)
+            }
+            "openSystemSettings" -> {
+                switchboard.openSection(call.argument<String>("section").orEmpty())
+                result.success(null)
+            }
+            "skip" -> {
+                skip(call.argument<Boolean>("next") ?: true)
                 result.success(null)
             }
             "media" -> result.success(media())
@@ -860,6 +901,11 @@ class HaloAndroidPlugin :
         )
     }
 
+    private fun skip(next: Boolean) {
+        val controls = currentController()?.transportControls ?: return
+        if (next) controls.skipToNext() else controls.skipToPrevious()
+    }
+
     private fun setPlaying(playing: Boolean) {
         val controls = currentController()?.transportControls ?: return
         if (playing) controls.play() else controls.pause()
@@ -1090,6 +1136,8 @@ class HaloAndroidPlugin :
         return mapOf(
             "level" to manager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) / 100.0,
             "charging" to manager.isCharging,
+            // Milliseconds until full while charging, else -1.
+            "fullInMs" to manager.computeChargeTimeRemaining(),
         )
     }
 

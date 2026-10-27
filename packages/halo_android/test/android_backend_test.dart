@@ -26,6 +26,8 @@ void main() {
   late List<Map<String, Object?>> posted;
   Map<String, Object?>? playing;
   late String privateSpace;
+  late Map<String, Object?> quick;
+  late Map<String, Object> battery;
 
   setUp(() {
     installed = [
@@ -41,6 +43,19 @@ void main() {
     posted = [];
     playing = null;
     privateSpace = 'none';
+    battery = {'level': 0.82, 'charging': false, 'fullInMs': -1};
+    quick = {
+      'brightness': 0.5,
+      'brightnessAuto': true,
+      'canWriteSettings': true,
+      'volume': 0.6,
+      'ringer': 'vibrate',
+      'wifi': {'on': true, 'state': 'connected'},
+      'bluetooth': {'on': false, 'state': 'off'},
+      'cellular': {'on': true, 'state': 'connected'},
+      'airplane': {'on': false, 'state': 'off'},
+      'focus': {'on': false, 'canChange': false},
+    };
     calls = [];
     messenger.setMockMethodCallHandler(methods, (call) async {
       calls.add(call);
@@ -51,7 +66,8 @@ void main() {
             id: {'icon': icon, if (id == 'com.a/.Main') 'mono': mono},
         },
         'launch' => (call.arguments as Map)['id'] == 'com.a/.Main',
-        'battery' => {'level': 0.82, 'charging': false},
+        'battery' => battery,
+        'quick' => quick,
         'isDefaultHome' => false,
         'requestDefaultHome' => null,
         'defaultApps' => defaults,
@@ -103,7 +119,16 @@ void main() {
         'requestNotificationAccess' ||
         'dismissNotification' ||
         'snoozeNotification' ||
-        'setPlaying' => null,
+        'setPlaying' ||
+        'setBrightness' ||
+        'setBrightnessAuto' ||
+        'setVolume' ||
+        'setFocus' ||
+        'requestWriteSettings' ||
+        'requestPolicyAccess' ||
+        'openSystemSettings' ||
+        'openRadio' ||
+        'skip' => null,
         'openNotification' => true,
         'notificationAction' => true,
         'openMap' || 'openEvent' => null,
@@ -186,7 +211,7 @@ void main() {
     await pressed;
   });
 
-  test('what Phase 1 does not serve is empty, not invented', () async {
+  test('what Phase 6 will serve is empty, not invented', () async {
     final b = await AndroidBackend.create();
     addTearDown(b.dispose);
     expect(b.agenda, isEmpty);
@@ -194,7 +219,6 @@ void main() {
     expect(b.notifications, isEmpty);
     expect(b.lockPreviews, isEmpty);
     expect(b.recents, isEmpty);
-    expect(b.quick.toggles, isEmpty);
     expect(b.quick.media, isNull);
     expect(b.streamSummary.newCount, 0);
   });
@@ -543,6 +567,145 @@ void main() {
       final b = await AndroidBackend.create();
       addTearDown(b.dispose);
       expect(b.quick.media, isNull);
+    });
+  });
+
+  group('switchboard', () {
+    test('reads the dials and rows from the phone', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      final q = b.quick;
+      expect(q.brightness, 0.5);
+      expect(q.brightnessAuto, isTrue);
+      expect(q.brightnessWritable, isTrue);
+      expect(q.volume, 0.6);
+      expect(q.volumeFooter, 'Media · vibrate');
+      expect(
+        {for (final t in q.toggles) t.id: (t.on, t.detail)},
+        {
+          'wifi': (true, 'Connected'),
+          'bluetooth': (false, 'Off'),
+          'cellular': (true, 'Connected'),
+          'airplane': (false, 'Off'),
+          'focus': (false, 'Allow access'),
+        },
+      );
+    });
+
+    test('a manual brightness shows at once and is sent', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      b.setBrightness(0.8);
+      expect(b.quick.brightness, 0.8);
+      expect(b.quick.brightnessAuto, isFalse);
+      expect(calls.last.method, 'setBrightness');
+      expect(calls.last.arguments, {'value': 0.8});
+    });
+
+    test(
+      'without Write settings the dial asks for the grant instead',
+      () async {
+        quick['canWriteSettings'] = false;
+        final b = await AndroidBackend.create();
+        addTearDown(b.dispose);
+        b.setBrightness(0.9);
+        expect(b.quick.brightness, 0.5);
+        expect(calls.last.method, 'setBrightnessAuto');
+      },
+    );
+
+    test('volume is clamped and sent', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      b.setVolume(3);
+      expect(b.quick.volume, 1);
+      expect(calls.last.arguments, {'value': 1.0});
+    });
+
+    test('radios open their Settings panel, Focus is set', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      b.setToggle('wifi', false);
+      expect(calls.last.method, 'openRadio');
+      expect(calls.last.arguments, {'id': 'wifi'});
+      b.setToggle('focus', true);
+      expect(calls.last.method, 'setFocus');
+      expect(calls.last.arguments, {'on': true});
+    });
+
+    test('Focus with access says Off, and on says Do not disturb', () async {
+      quick['focus'] = {'on': true, 'canChange': true};
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.quick.toggles.last.detail, 'Do not disturb');
+    });
+
+    test('skip goes to the session', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      b.skipMedia(next: false);
+      expect(calls.last.method, 'skip');
+      expect(calls.last.arguments, {'next': false});
+    });
+
+    test('full by shows only while charging with an estimate', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.status.fullBy, isNull);
+      battery = {'level': 0.5, 'charging': true, 'fullInMs': 3600000};
+      final c = await AndroidBackend.create();
+      addTearDown(c.dispose);
+      expect(c.status.fullBy, matches(RegExp(r'^\d\d:\d\d$')));
+    });
+  });
+
+  group('system access', () {
+    test(
+      'every optional access is listed with whether it is granted',
+      () async {
+        calendarAllowed = true;
+        final b = await AndroidBackend.create();
+        addTearDown(b.dispose);
+        expect(
+          {for (final g in b.accessGrants) g.id: g.granted},
+          {
+            'notifications': false,
+            'calendar': true,
+            'contacts': false,
+            'brightness': true,
+            'focus': false,
+          },
+        );
+        expect(b.system.privacyAlerts, 3);
+      },
+    );
+
+    test('Focus follows Do Not Disturb', () async {
+      quick['focus'] = {'on': true, 'canChange': true};
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.system.focus, 'Do not disturb');
+      expect(b.accessGrants.last.granted, isTrue);
+      expect(b.system.privacyAlerts, 3);
+    });
+
+    test('giving an access opens its own screen', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      await b.openAccess('focus');
+      expect(calls.last.method, 'requestPolicyAccess');
+      await b.openAccess('brightness');
+      expect(calls.last.method, 'requestWriteSettings');
+      await b.openAccess('notifications');
+      expect(calls.last.method, 'requestNotificationAccess');
+    });
+
+    test('a section opens the Android Settings page', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      await b.openAndroidSettings('display');
+      expect(calls.last.method, 'openSystemSettings');
+      expect(calls.last.arguments, {'section': 'display'});
     });
   });
 }

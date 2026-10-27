@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Android 15: lets the default home app see the private space. -->
     <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
+    <!-- Switchboard: connection state, brightness (the user grants Write settings
+         in Settings) and Do Not Disturb (the user grants policy access). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <!-- Optional: today's events on Home, asked for from Home. -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
 
