@@ -15,11 +15,15 @@ class HaloSlatData {
     required this.label,
     required this.icon,
     required this.preview,
+    this.iconWidget,
   });
 
   final String id;
   final String label;
   final HaloIcons icon;
+
+  /// Drawn in place of [icon] on a collapsed slat (a real app's icon).
+  final Widget? iconWidget;
 
   /// The app's live surface, shown when the slat is focused.
   final Widget preview;
@@ -38,12 +42,16 @@ class HaloSlats extends StatefulWidget {
     required this.focusedIndex,
     required this.onFocus,
     required this.onClose,
+    this.onOpen,
   });
 
   final List<HaloSlatData> slats;
   final int focusedIndex;
   final ValueChanged<int> onFocus;
   final ValueChanged<HaloSlatData> onClose;
+
+  /// A tap on the focused slat: switch to its app.
+  final ValueChanged<HaloSlatData>? onOpen;
 
   static const double collapsedWidth = 36;
   static const double gap = 6;
@@ -113,6 +121,9 @@ class _HaloSlatsState extends State<HaloSlats>
                     focus: t,
                     onTap: () => widget.onFocus(i),
                     onClose: () => widget.onClose(slats[i]),
+                    onOpen: widget.onOpen == null
+                        ? null
+                        : () => widget.onOpen!(slats[i]),
                   ),
                 ),
               );
@@ -132,6 +143,7 @@ class _SlatTile extends StatefulWidget {
     required this.focus,
     required this.onTap,
     required this.onClose,
+    this.onOpen,
   });
 
   final HaloSlatData data;
@@ -140,6 +152,7 @@ class _SlatTile extends StatefulWidget {
   final double focus;
   final VoidCallback onTap;
   final VoidCallback onClose;
+  final VoidCallback? onOpen;
 
   @override
   State<_SlatTile> createState() => _SlatTileState();
@@ -193,13 +206,13 @@ class _SlatTileState extends State<_SlatTile>
     return Semantics(
       button: true,
       label: focused ? '${d.label}, focused' : d.label,
-      onTap: focused ? null : widget.onTap,
+      onTap: focused ? widget.onOpen : widget.onTap,
       customSemanticsActions: {
         const CustomSemanticsAction(label: 'Close'): widget.onClose,
       },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: focused ? null : widget.onTap,
+        onTap: focused ? widget.onOpen : widget.onTap,
         onVerticalDragUpdate: (u) =>
             setState(() => _dy = math.min(0, _dy + u.delta.dy)),
         onVerticalDragEnd: _end,
@@ -223,7 +236,7 @@ class _SlatTileState extends State<_SlatTile>
                     padding: const EdgeInsets.only(top: 14),
                     child: Column(
                       children: [
-                        HaloIcon(d.icon, size: 20),
+                        d.iconWidget ?? HaloIcon(d.icon, size: 20),
                         const SizedBox(height: 18),
                         RotatedBox(
                           quarterTurns: 3,

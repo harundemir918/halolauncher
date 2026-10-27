@@ -161,6 +161,41 @@ void main() {
     expect(find.bySemanticsLabel('Play'), findsOneWidget);
   });
 
+  testWidgets('a tap on the focused slat opens it, on another focuses it', (
+    tester,
+  ) async {
+    final opened = <String>[];
+    final focused = <int>[];
+    await pumpIn(
+      tester,
+      SizedBox(
+        height: 400,
+        child: HaloSlats(
+          focusedIndex: 1,
+          onFocus: focused.add,
+          onClose: (_) {},
+          onOpen: (d) => opened.add(d.id),
+          slats: [
+            for (final id in ['a', 'b', 'c'])
+              HaloSlatData(
+                id: id,
+                label: 'App $id',
+                icon: HaloIcons.notes,
+                iconWidget: const SizedBox(key: ValueKey('own-icon')),
+                preview: Text('preview $id'),
+              ),
+          ],
+        ),
+      ),
+    );
+    await tester.tap(find.text('preview b'));
+    expect(opened, ['b']);
+    expect(find.byKey(const ValueKey('own-icon')), findsNWidgets(2));
+    await tester.tap(find.byKey(const ValueKey('slat-a')));
+    expect(focused, [0]);
+    expect(opened, ['b']);
+  });
+
   testWidgets('a flick across the card skips, a slow drag does not', (
     tester,
   ) async {

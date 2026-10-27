@@ -107,8 +107,6 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  bool _dragging = false;
-
   void _dragEnd(DragEndDetails d) {
     // Flick a little further with velocity, then snap to a whole app.
     final target = _clamp(_pos.value - d.primaryVelocity! / 4000).round();
@@ -173,22 +171,26 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
               ],
             );
             // Drag anywhere in the lower part, including on an app, to rotate.
-            return GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onHorizontalDragStart: (d) => _dragging =
-                  d.localPosition.dy > box.maxHeight - HaloArc.dragZone,
-              onHorizontalDragUpdate: (d) {
-                if (_dragging) {
-                  _pos.value = _clamp(
-                    _pos.value - d.delta.dx / HaloArc._pxPerStep,
-                  );
-                }
-              },
-              onHorizontalDragEnd: (d) {
-                if (_dragging) _dragEnd(d);
-                _dragging = false;
-              },
-              child: stack,
+            // The detector covers only that part, so a sideways drag higher up
+            // reaches whatever is behind the arc (Home's glance swipe).
+            return Stack(
+              children: [
+                stack,
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: HaloArc.dragZone,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onHorizontalDragUpdate: (d) => _pos.value = _clamp(
+                      _pos.value - d.delta.dx / HaloArc._pxPerStep,
+                    ),
+                    onHorizontalDragEnd: _dragEnd,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ],
             );
           },
         );
