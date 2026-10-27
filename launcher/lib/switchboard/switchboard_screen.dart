@@ -44,16 +44,10 @@ class SwitchboardScreen extends StatelessWidget {
               // Top right, inside every phone's frame (it is shorter than 844 on
               // a phone with a cutout and a nav bar, so nothing sits below the
               // battery cells).
-              Positioned(
-                top: 60,
-                right: HaloSpace.gutter - 8,
-                child: Row(
-                  children: [
-                    const _SystemLink(),
-                    const SizedBox(width: 6),
-                    _ThemeSwitch(backend: b),
-                  ],
-                ),
+              const Positioned(
+                top: 62,
+                right: HaloSpace.gutter,
+                child: _SystemButton(),
               ),
               Positioned(
                 top: 116,
@@ -92,23 +86,30 @@ class SwitchboardScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              // A fixed band between the dials and the media strip; with the
+              // theme row there are six rows, so the list scrolls.
               Positioned(
                 top: 336,
                 left: HaloSpace.gutter,
                 right: HaloSpace.gutter,
-                child: Column(
-                  children: [
-                    for (final t in q.toggles) ...[
-                      HaloToggleRow(
-                        title: t.title,
-                        subtitle: t.detail,
-                        value: t.on,
-                        onChanged: (on) => b.setToggle(t.id, on),
-                      ),
-                      if (t != q.toggles.last)
-                        const SizedBox(height: HaloSpace.g6),
-                    ],
-                  ],
+                height: 296,
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
+                  itemCount: q.toggles.length + 1,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: HaloSpace.g6),
+                  itemBuilder: (context, i) {
+                    if (i == q.toggles.length) {
+                      return _ThemeRow(backend: b);
+                    }
+                    final t = q.toggles[i];
+                    return HaloToggleRow(
+                      title: t.title,
+                      subtitle: t.detail,
+                      value: t.on,
+                      onChanged: (on) => b.setToggle(t.id, on),
+                    );
+                  },
                 ),
               ),
               if (media != null)
@@ -163,62 +164,39 @@ class SwitchboardScreen extends StatelessWidget {
   }
 }
 
-/// Dark or light, right on the Switchboard. On means dark, whatever Auto
-/// resolves to now; flipping it sets that appearance by hand (System has Auto).
-class _ThemeSwitch extends StatelessWidget {
-  const _ThemeSwitch({required this.backend});
+/// Dark or light, as a row under Focus. On means dark, whatever Auto resolves
+/// to now; flipping it sets that appearance by hand (System has Auto).
+class _ThemeRow extends StatelessWidget {
+  const _ThemeRow({required this.backend});
 
   final HaloBackend backend;
 
   @override
   Widget build(BuildContext context) {
-    final halo = context.halo;
-    final dark = !halo.isLight;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          HaloType.upper(dark ? 'Dark' : 'Light'),
-          style: HaloType.footer.copyWith(color: halo.muted),
-        ),
-        const SizedBox(width: 10),
-        HaloSwitch(
-          value: dark,
-          semanticLabel: 'Dark theme',
-          onChanged: (on) =>
-              backend.setAppearance(on ? Appearance.dark : Appearance.light),
-        ),
-      ],
+    final dark = !context.halo.isLight;
+    return HaloToggleRow(
+      title: 'Theme',
+      subtitle: dark ? 'Dark' : 'Light',
+      value: dark,
+      onChanged: (on) =>
+          backend.setAppearance(on ? Appearance.dark : Appearance.light),
     );
   }
 }
 
 /// The way into System, Halo's settings.
-class _SystemLink extends StatelessWidget {
-  const _SystemLink();
+class _SystemButton extends StatelessWidget {
+  const _SystemButton();
 
   @override
   Widget build(BuildContext context) {
     final open = ShellNav.maybeOf(context)?.open;
-    return Semantics(
-      button: true,
+    return HaloButton(
       label: 'System',
-      onTap: open == null ? null : () => open('system'),
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: open == null ? null : () => open('system'),
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            alignment: Alignment.center,
-            child: Text(
-              HaloType.upper('System'),
-              style: HaloType.status.copyWith(color: context.halo.text),
-            ),
-          ),
-        ),
-      ),
+      size: HaloButtonSize.small,
+      variant: HaloButtonVariant.secondary,
+      trailing: HaloIcon(HaloIcons.chevronRight, size: 14),
+      onPressed: open == null ? null : () => open('system'),
     );
   }
 }

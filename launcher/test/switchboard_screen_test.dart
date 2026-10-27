@@ -61,15 +61,35 @@ void main() {
     expect(dials.map((d) => d.active), [true, false]);
   });
 
-  testWidgets('the theme switch switches dark to light by hand', (tester) async {
+  testWidgets('the Theme row sits under Focus and flips dark to light', (
+    tester,
+  ) async {
     await pumpBoard(tester);
+    final list = find.byType(ListView);
+    await tester.drag(list, const Offset(0, -200));
+    await tester.pump();
+    final focus = tester.getTopLeft(find.text('Focus')).dy;
+    final theme = tester.getTopLeft(find.text('Theme')).dy;
+    expect(theme, greaterThan(focus));
     expect(find.text('DARK'), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel('Dark theme'));
+    await tester.tap(find.text('Theme'));
     await tester.pump();
     expect(backend.system.appearance, Appearance.light);
   });
 
-  testWidgets('the SYSTEM link opens System', (tester) async {
+  testWidgets('the rows stay in a fixed band and scroll', (tester) async {
+    await pumpBoard(tester);
+    final box = tester.getRect(find.byType(ListView));
+    expect(box.top, 336);
+    expect(box.height, 296);
+    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.pump();
+    expect(tester.getRect(find.byType(ListView)), box);
+    // The media strip below does not move.
+    expect(tester.getTopLeft(find.text('Night Drive')).dy, greaterThan(644));
+  });
+
+  testWidgets('the System button opens System', (tester) async {
     tester.view.physicalSize = const Size(390 * 2, 844 * 2);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
@@ -84,7 +104,7 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('SYSTEM'));
+    await tester.tap(find.text('System'));
     expect(opened, 'system');
   });
 
@@ -150,7 +170,7 @@ void main() {
     await tester.tap(find.text('Airplane'));
     await tester.pump();
     final rows = tester.widgetList<HaloToggleRow>(find.byType(HaloToggleRow));
-    expect(rows.map((r) => r.value), [false, false, false, true, true]);
+    expect(rows.map((r) => r.value), [false, false, false, true, true, true]);
     expect(find.text('ON'), findsOneWidget);
   });
 
