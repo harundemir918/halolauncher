@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Process
+import android.os.SystemClock
 import android.provider.Settings
 
 /**
@@ -37,14 +38,21 @@ class UsageController(private val context: Context) {
     }
 
     /**
-     * Packages brought to the foreground in the last [days], newest first,
-     * each with the time it was last in front. Halo itself is left out.
+     * Packages brought to the foreground in the last [hours], and since the
+     * phone started, newest first, each with the time it was last in front.
+     * Halo itself is left out.
+     *
+     * Android tells a launcher nothing about which apps are still open, and
+     * the public events only say an app left the screen, not whether it was
+     * closed, so this is a history of use, not the system's Overview.
      */
-    fun recent(days: Int = 3, limit: Int = 30): List<Map<String, Any>> {
+    fun recent(hours: Int = 1, limit: Int = 30): List<Map<String, Any>> {
         if (!canRead()) return emptyList()
         val now = System.currentTimeMillis()
+        // Events from before the phone started describe screens that are gone.
+        val boot = now - SystemClock.elapsedRealtime()
         val events = context.getSystemService(UsageStatsManager::class.java)
-            .queryEvents(now - days * DAY_MS, now)
+            .queryEvents(maxOf(boot, now - hours * HOUR_MS), now)
         val last = LinkedHashMap<String, Long>()
         val event = UsageEvents.Event()
         while (events.hasNextEvent()) {
@@ -60,6 +68,6 @@ class UsageController(private val context: Context) {
     }
 
     private companion object {
-        const val DAY_MS = 24 * 60 * 60 * 1000L
+        const val HOUR_MS = 60 * 60 * 1000L
     }
 }
