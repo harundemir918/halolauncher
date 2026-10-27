@@ -303,6 +303,19 @@ class HaloAndroidPlugin :
             "replyNotification" -> result.success(
                 replyNotification(call.argument<String>("id"), call.argument<String>("text").orEmpty()),
             )
+            "notificationAction" -> result.success(
+                runNotificationAction(call.argument<String>("id"), call.argument<String>("action")),
+            )
+            "openMap" -> {
+                openView(Uri.parse("geo:0,0?q=" + Uri.encode(call.argument<String>("place").orEmpty())))
+                result.success(null)
+            }
+            "openEvent" -> {
+                call.argument<String>("id")?.toLongOrNull()?.let {
+                    openView(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, it))
+                }
+                result.success(null)
+            }
             "media" -> result.success(media())
             "setPlaying" -> {
                 setPlaying(call.argument<Boolean>("playing") ?: false)
@@ -539,9 +552,9 @@ class HaloAndroidPlugin :
     }
 
     /**
-     * Today's timed events from visible calendars, in time order: start
-     * (epoch ms), title, location, and attendee count when there are guests.
-     * All-day events are left out for now; they have no time for the agenda.
+     * Today's events from visible calendars, all-day ones first, then in time
+     * order: id, start (epoch ms; local midnight for all-day), title,
+     * location, all-day, and attendee count when there are guests.
      */
     private fun agenda(): List<Map<String, Any?>> {
         if (!canReadCalendar()) return emptyList()
@@ -552,11 +565,20 @@ class HaloAndroidPlugin :
             set(java.util.Calendar.MILLISECOND, 0)
         }
         val start = day.timeInMillis
-        val end = start + 24 * 60 * 60 * 1000L
+        val dayMs = 24 * 60 * 60 * 1000L
+        val end = start + dayMs
+        // All-day instances sit at UTC midnight, which can fall on either side
+        // of the local day, so ask a day wider and match them by date.
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
-            ContentUris.appendId(it, start)
-            ContentUris.appendId(it, end)
+            ContentUris.appendId(it, start - dayMs)
+            ContentUris.appendId(it, end + dayMs)
         }.build()
+        val utc = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        fun isToday(utcMidnight: Long): Boolean {
+            utc.timeInMillis = utcMidnight
+            return utc.get(java.util.Calendar.YEAR) == day.get(java.util.Calendar.YEAR) &&
+                utc.get(java.util.Calendar.DAY_OF_YEAR) == day.get(java.util.Calendar.DAY_OF_YEAR)
+        }
         val projection = arrayOf(
             CalendarContract.Instances.EVENT_ID,
             CalendarContract.Instances.TITLE,
@@ -574,19 +596,22 @@ class HaloAndroidPlugin :
             )?.use { c ->
                 buildList {
                     while (c.moveToNext()) {
-                        if (c.getInt(4) == 1) continue
+                        val allDay = c.getInt(4) == 1
                         val begin = c.getLong(2)
-                        if (begin < start || begin >= end) continue
+                        if (allDay && !isToday(begin)) continue
+                        if (!allDay && (begin < start || begin >= end)) continue
                         add(
                             mapOf(
-                                "start" to begin,
+                                "id" to c.getLong(0).toString(),
+                                "start" to if (allDay) start else begin,
                                 "title" to (c.getString(1) ?: ""),
                                 "location" to (c.getString(3) ?: ""),
+                                "allDay" to allDay,
                                 "attendees" to attendees(c.getLong(0)),
                             ),
                         )
                     }
-                }
+                }.sortedWith(compareBy({ it["allDay"] != true }, { it["start"] as Long }))
             }.orEmpty()
         } catch (e: SecurityException) {
             emptyList()
@@ -676,6 +701,10 @@ class HaloAndroidPlugin :
                     "postTime" to sbn.postTime,
                     "canReply" to (replyAction(n) != null),
                     "canDismiss" to sbn.isClearable,
+                    // The app's other actions, by their place in the list.
+                    "actions" to n.actions.orEmpty().withIndex()
+                        .filter { (_, a) -> a.remoteInputs.isNullOrEmpty() && !a.title.isNullOrBlank() }
+                        .map { (i, a) -> mapOf("id" to i.toString(), "label" to a.title.toString()) },
                 )
             }
             .sortedByDescending { it["postTime"] as Long }
@@ -693,6 +722,26 @@ class HaloAndroidPlugin :
             true
         } catch (e: PendingIntent.CanceledException) {
             false
+        }
+    }
+
+    /** Sends one of the notification's own actions (by its place). */
+    private fun runNotificationAction(key: String?, index: String?): Boolean {
+        val sbn = notification(key) ?: return false
+        val action = index?.toIntOrNull()?.let { sbn.notification.actions?.getOrNull(it) } ?: return false
+        return try {
+            sendAllowingActivityStart(action.actionIntent, null)
+            true
+        } catch (e: PendingIntent.CanceledException) {
+            false
+        }
+    }
+
+    private fun openView(uri: Uri) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            // No app for it.
         }
     }
 

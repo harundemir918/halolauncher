@@ -80,6 +80,14 @@ void main() {
             'title': 'Standup',
             'location': 'Room 3',
             'attendees': 4,
+            'id': '7',
+          },
+          {
+            'start': DateTime(2026, 10, 26).millisecondsSinceEpoch,
+            'title': 'Holiday',
+            'location': '',
+            'allDay': true,
+            'id': '8',
           },
           {
             'start': DateTime(2099, 1, 1, 9).millisecondsSinceEpoch,
@@ -97,6 +105,8 @@ void main() {
         'snoozeNotification' ||
         'setPlaying' => null,
         'openNotification' => true,
+        'notificationAction' => true,
+        'openMap' || 'openEvent' => null,
         'replyNotification' => (call.arguments as Map)['text'] != '',
         _ => throw MissingPluginException(),
       };
@@ -386,10 +396,16 @@ void main() {
       calendarAllowed = true;
       final b = await AndroidBackend.create();
       addTearDown(b.dispose);
-      expect(b.agenda.map((e) => e.title), ['Standup', 'Later']);
+      expect(b.agenda.map((e) => e.title), ['Standup', 'Holiday', 'Later']);
       expect(b.agenda.first.attendees, 4);
       expect(b.agenda.first.location, 'Room 3');
+      expect(b.agenda.first.id, '7');
+      expect(b.agenda[1].allDay, isTrue);
       expect(b.nextEvent?.title, 'Later');
+      await b.openEvent('7');
+      await b.openMap('Room 3');
+      expect(calls[calls.length - 2].arguments, {'id': '7'});
+      expect(calls.last.arguments, {'place': 'Room 3'});
     });
 
     test('a calendar change reloads', () async {
@@ -399,7 +415,7 @@ void main() {
       final changed = expectLater(b.changes, emits(null));
       sink.success({'type': 'calendar'});
       await changed;
-      expect(b.agenda, hasLength(2));
+      expect(b.agenda, hasLength(3));
     });
   });
 
@@ -420,6 +436,9 @@ void main() {
       'postTime': at,
       'canReply': canReply,
       'canDismiss': true,
+      'actions': [
+        {'id': '1', 'label': 'Mark as read'},
+      ],
     };
 
     test('nothing without access', () async {
@@ -451,6 +470,9 @@ void main() {
       expect(byId['new-other']!.mark, StreamMark.alert);
       expect(byId['old']!.mark, StreamMark.read);
       expect(byId['new-msg']!.source, 'Messages · Elif');
+      expect(byId['new-msg']!.actions.single.label, 'Mark as read');
+      await b.runNotificationAction('new-msg', '1');
+      expect(calls.last.arguments, {'id': 'new-msg', 'action': '1'});
       expect(byId['new-msg']!.sender, 'Elif');
       // Its app on the arc, for the unread badge.
       expect(byId['new-msg']!.app, 'com.a/.Main');

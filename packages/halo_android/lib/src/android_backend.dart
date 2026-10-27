@@ -131,6 +131,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _clock?.cancel();
+    _mediaTick?.cancel();
     unawaited(_subscription?.cancel());
     unawaited(_changes.close());
     unawaited(_home.close());
@@ -426,6 +427,23 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
             progress: (m['progress'] as num?)?.toDouble() ?? 0,
             playing: m['playing'] as bool? ?? false,
           );
+    _syncMediaTick();
+  }
+
+  Timer? _mediaTick;
+
+  /// While a track plays the position keeps moving without any session event,
+  /// so reload it each second; stop as soon as nothing plays.
+  void _syncMediaTick() {
+    if (_media?.playing != true) {
+      _mediaTick?.cancel();
+      _mediaTick = null;
+      return;
+    }
+    _mediaTick ??= Timer.periodic(const Duration(seconds: 1), (_) async {
+      await _loadMedia();
+      _notify();
+    });
   }
 
   @override
@@ -452,6 +470,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     if (m == null) return;
     // Show it at once; the session's own event confirms it.
     _media = m.copyWith(playing: playing);
+    _syncMediaTick();
     _notify();
     unawaited(_methods.invokeMethod<void>('setPlaying', {'playing': playing}));
   }
@@ -533,6 +552,8 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           title: e['title'] as String,
           location: e['location'] as String,
           attendees: e['attendees'] as int?,
+          id: e['id'] as String?,
+          allDay: e['allDay'] as bool? ?? false,
         ),
     ];
   }
@@ -623,6 +644,13 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           mark: mark,
           canReply: canReply,
           canDismiss: r['canDismiss'] as bool? ?? true,
+          actions: [
+            for (final a in (r['actions'] as List?) ?? const [])
+              NotificationAction(
+                id: (a as Map)['id'] as String,
+                label: a['label'] as String,
+              ),
+          ],
         ),
       );
     }
@@ -655,6 +683,18 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   @override
   Future<void> snoozeNotification(String id) =>
       _methods.invokeMethod<void>('snoozeNotification', {'id': id});
+
+  @override
+  Future<void> runNotificationAction(String id, String actionId) => _methods
+      .invokeMethod<bool>('notificationAction', {'id': id, 'action': actionId});
+
+  @override
+  Future<void> openMap(String place) =>
+      _methods.invokeMethod<void>('openMap', {'place': place});
+
+  @override
+  Future<void> openEvent(String eventId) =>
+      _methods.invokeMethod<void>('openEvent', {'id': eventId});
 
   @override
   void markNotificationsSeen() {

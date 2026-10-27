@@ -34,6 +34,11 @@
         <intent>
             <action android:name="android.intent.action.DIAL" />
         </intent>
+        <!-- Home's "Open event" (the calendar app). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="content" android:host="com.android.calendar" />
+        </intent>
     </queries>
 
     <application>
