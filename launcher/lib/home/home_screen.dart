@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             top: 58,
             left: HaloSpace.gutter,
             right: HaloSpace.gutter,
-            child: _Now(event: event, now: now),
+            child: _Now(event: event, now: now, backend: b),
           ),
           Positioned(
             top: 290,
@@ -135,7 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 for (final e in b.agenda)
                   HaloAgendaRow(
-                    time: HaloFormat.clock(e.start),
+                    time: e.allDay
+                        ? HaloType.upper('All day')
+                        : HaloFormat.clock(e.start),
                     title: e.title,
                     trailing: e.location,
                     current: identical(e, event) || e.start == event?.start,
@@ -209,10 +211,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
 /// The `NOW` block: kicker, headline, context line and two actions.
 class _Now extends StatelessWidget {
-  const _Now({required this.event, required this.now});
+  const _Now({required this.event, required this.now, required this.backend});
 
   final CalendarEvent? event;
   final DateTime now;
+  final HaloBackend backend;
 
   @override
   Widget build(BuildContext context) {
@@ -249,13 +252,28 @@ class _Now extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              HaloButton(label: 'Navigate', onPressed: () {}),
-              const SizedBox(width: 8),
-              HaloButton(
-                label: 'Open notes',
-                variant: HaloButtonVariant.secondary,
-                onPressed: () {},
-              ),
+              // Navigate needs a place to go to.
+              if (e.location.trim().isNotEmpty) ...[
+                HaloButton(
+                  label: 'Navigate',
+                  onPressed: () => backend.openMap(e.location),
+                ),
+                const SizedBox(width: 8),
+              ],
+              // A phone event opens in the calendar app; the designs' fixture
+              // keeps its "Open notes".
+              if (e.id case final id?)
+                HaloButton(
+                  label: 'Open event',
+                  variant: HaloButtonVariant.secondary,
+                  onPressed: () => backend.openEvent(id),
+                )
+              else
+                HaloButton(
+                  label: 'Open notes',
+                  variant: HaloButtonVariant.secondary,
+                  onPressed: () {},
+                ),
             ],
           ),
         ],

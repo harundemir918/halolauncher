@@ -76,6 +76,13 @@ class _StreamScreenState extends State<StreamScreen> {
               onPressed: () => b.snoozeNotification(n.id),
             ),
           ],
+          // The app's own actions (Mark as read, Archive…), at most two so
+          // the item stays calm.
+          for (final a in n.actions.take(2))
+            HaloTextAction(
+              a.label,
+              onPressed: () => b.runNotificationAction(n.id, a.id),
+            ),
         ],
       ),
     );

@@ -15,7 +15,11 @@ class Grants extends MockBackend {
     this.calendar = true,
     this.notificationAccess = true,
     this.realMessage = false,
+    this.phoneEvents = false,
   });
+
+  /// Today's events as the phone gives them: with ids, one all day.
+  final bool phoneEvents;
 
   final bool calendar;
   final bool notificationAccess;
@@ -25,7 +29,29 @@ class Grants extends MockBackend {
   bool get canReadCalendar => calendar;
 
   @override
-  List<CalendarEvent> get agenda => calendar ? super.agenda : const [];
+  List<CalendarEvent> get agenda {
+    if (!calendar) return const [];
+    if (!phoneEvents) return super.agenda;
+    final day = DateTime(now.year, now.month, now.day);
+    return [
+      CalendarEvent(
+        start: day,
+        title: 'Republic Day',
+        location: '',
+        allDay: true,
+        id: '1',
+      ),
+      CalendarEvent(
+        start: now.add(const Duration(minutes: 30)),
+        title: 'Dentist',
+        location: 'Kadıköy',
+        id: '2',
+      ),
+    ];
+  }
+
+  @override
+  CalendarEvent? get nextEvent => nextEventIn(agenda, now);
 
   @override
   bool get canReadNotifications => notificationAccess;
@@ -45,6 +71,11 @@ class Grants extends MockBackend {
         unread: true,
         mark: StreamMark.current,
         canReply: true,
+        actions: const [
+          NotificationAction(id: '1', label: 'Mark as read'),
+          NotificationAction(id: '2', label: 'Archive'),
+          NotificationAction(id: '3', label: 'Block'),
+        ],
       ),
     ];
   }
@@ -173,5 +204,40 @@ void main() {
       await tester.pumpAndSettle();
       expect(b.replies, [('sms-1', 'No problem')]);
     });
+  });
+
+  group('NOW and TODAY', () {
+    testWidgets('Navigate opens the maps app at the place', (tester) async {
+      final b = MockBackend();
+      await pumpLauncher(tester, b);
+      await tester.tap(find.text('Navigate'));
+      expect(b.mapsOpened, [b.nextEvent!.location]);
+      // The designs' fixture has no phone id: it keeps "Open notes".
+      expect(find.text('Open notes'), findsOneWidget);
+    });
+
+    testWidgets('a phone event offers Open event; all-day reads ALL DAY', (
+      tester,
+    ) async {
+      final b = Grants(phoneEvents: true);
+      await pumpLauncher(tester, b);
+      expect(find.text('Dentist\nin 30 min'), findsOneWidget);
+      await tester.tap(find.text('Open event'));
+      expect(b.eventsOpened, ['2']);
+      expect(find.text('ALL DAY'), findsOneWidget);
+      expect(find.text('Republic Day'), findsOneWidget);
+    });
+  });
+
+  testWidgets("Stream shows two of the app's own actions and runs them", (
+    tester,
+  ) async {
+    final b = Grants(realMessage: true);
+    await pumpLauncher(tester, b, start: 'stream');
+    expect(find.text('MARK AS READ'), findsOneWidget);
+    expect(find.text('ARCHIVE'), findsOneWidget);
+    expect(find.text('BLOCK'), findsNothing);
+    await tester.tap(find.text('MARK AS READ'));
+    expect(b.actionsRun, [('sms-1', '1')]);
   });
 }
