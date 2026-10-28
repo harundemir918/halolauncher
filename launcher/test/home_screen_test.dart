@@ -184,6 +184,33 @@ void main() {
     expect(find.text('Reply'), findsNothing);
   });
 
+  testWidgets('a message with no reply action is opened, not answered', (
+    tester,
+  ) async {
+    useReferenceFrame(tester);
+    final b = _NoReply(now: DateTime(2026, 10, 23, 23));
+    await tester.pumpWidget(app(HomeScreen(backend: b, onLaunch: (_) {})));
+    expect(find.text('Deniz\nwrote you'), findsOneWidget);
+    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Reply'), findsNothing);
+    await tester.tap(find.text('Open'));
+    expect(b.openedNotifications, ['sms-9']);
+  });
+
+  testWidgets('the card below offers Open for such a message too', (
+    tester,
+  ) async {
+    useReferenceFrame(tester);
+    // With an event NOW shows the event, and the message gets the card.
+    final b = _NoReply();
+    await tester.pumpWidget(app(HomeScreen(backend: b, onLaunch: (_) {})));
+    expect(find.byType(HaloActionCard), findsOneWidget);
+    expect(find.text('Running late'), findsOneWidget);
+    await tester.tap(find.text('Open'));
+    expect(b.openedNotifications, ['sms-9']);
+    expect(find.text('Reply'), findsNothing);
+  });
+
   testWidgets('matches the golden', (tester) async {
     await pumpHome(tester);
     await expectLater(
@@ -199,4 +226,23 @@ class _Quiet extends MockBackend {
 
   @override
   List<HaloNotification> get notifications => const [];
+}
+
+/// A person wrote, and their app offers no reply.
+class _NoReply extends MockBackend {
+  _NoReply({super.now});
+
+  @override
+  List<HaloNotification> get notifications => [
+    HaloNotification(
+      id: 'sms-9',
+      app: 'messages',
+      sender: 'Deniz',
+      body: 'Running late',
+      receivedAt: now.subtract(const Duration(minutes: 3)),
+      unread: true,
+      mark: StreamMark.current,
+      fromPerson: true,
+    ),
+  ];
 }

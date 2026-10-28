@@ -214,10 +214,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 // The designs' card answers a question with Yes; a real
                 // message gets Reply, which opens it in Stream.
                 message: ask.actionPrompt ?? ask.body,
-                yesLabel: ask.actionPrompt != null ? 'Yes' : 'Reply',
+                // The designs' Yes answers a question; a message gets Reply,
+                // which opens it in Stream; one the app lets nobody answer
+                // from here gets Open.
+                yesLabel: ask.actionPrompt != null
+                    ? 'Yes'
+                    : ask.canReply
+                    ? 'Reply'
+                    : 'Open',
                 onYes: ask.actionPrompt != null
                     ? () => b.replyToNotification(ask.id, 'Yes')
-                    : () => widget.onReply?.call(ask.id),
+                    : ask.canReply
+                    ? () => widget.onReply?.call(ask.id)
+                    : () => b.openNotification(ask.id),
                 onLater: () => b.snoozeNotification(ask.id),
               ),
             ),
@@ -310,7 +319,15 @@ class _Now extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              HaloButton(label: 'Reply', onPressed: () => onReply?.call(m.id)),
+              // Without a reply action (the app offers none) the message is
+              // opened in its app instead.
+              if (m.canReply)
+                HaloButton(label: 'Reply', onPressed: () => onReply?.call(m.id))
+              else
+                HaloButton(
+                  label: 'Open',
+                  onPressed: () => backend.openNotification(m.id),
+                ),
               const SizedBox(width: 8),
               HaloButton(
                 label: 'Later',
