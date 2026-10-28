@@ -126,7 +126,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - **Gestures (D-023):** Android owns the bottom edge (home, Overview) and the side edges (back), and the top edge opens the system shade. Halo's edge swipes need new homes: swipes inside Home (down on the upper area for Stream/Switchboard, up on the arc for Recents) or on-screen affordances.
 - **Status bar (D-024):** decided: Android's status bar shows the time and battery; Halo's row leads to Stream and Switchboard.
 - **Wallpaper:** "no glass" means the launcher draws its own opaque background. Ignore the system wallpaper, or offer Halo backgrounds only?
-- **Apps view (D-026):** built as a list reached by an up swipe on the arc. Still open: the gesture, how much Volt the list carries, and drag-to-reorder on the arc.
+- **Apps view (D-026):** built as a list reached by an up swipe on the arc. Still open: the gesture and how much Volt the list carries. Drag-to-reorder on the arc is built (D-035).
 - **Min SDK (D-018):** proposed Android 10 (API 29); the code uses 29.
 - **Motion spec:** none exists. DESIGN_SYSTEM §8 has interim rules.
 - **Brightness curve:** Android's brightness slider isn't linear, and Halo maps its ring straight onto the setting's 0 to 255. Low values may feel off.

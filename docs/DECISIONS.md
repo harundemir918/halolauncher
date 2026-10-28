@@ -191,3 +191,12 @@ The owner asked for the Home arc to hold at most 10 apps: with more, swiping to 
 - A full arc has no plus slots. The long-press menu of an app that isn't on it says `Arc is full` (disabled) instead of `Add to arc`. Removing an app makes room again.
 - An arc that already holds more than 10 (from before this) is left as it is: nothing is removed, it just can't grow until it is below 10.
 
+## D-035 · Reordering the arc by dragging. **Proposed** (2026-10-28)
+Press and hold an app on the arc: the moment the hold registers it lifts (it grows to 1.4 times its size, bigger than the focused app, with a Volt ring and a haptic tick, so reorder mode is plain). Moving the finger then drags it along the arc, and the others slide aside to make room. Letting go drops it in the nearest place, saves it (`moveOnArc`) and focuses it. This answers the open question in D-026 about how reordering should feel.
+- **On the curve:** only the finger's angle around the arc's center counts, not its distance, so the app stays on the ring however the finger strays. It stays between the first and last app; the plus slots are not drop places and are hidden meanwhile.
+- **Edges:** with the finger far round the arc (about 46 degrees from the top, near the screen's side) the arc turns, faster the closer to the edge, to carry the app past what is in view.
+- **The menu moves:** the long-press menu now opens when you let go if you didn't move (it used to open as soon as the hold registered). Moving more than about 10 px after the hold starts the drag. Letting go without moving puts the app down again and opens the menu. A quick sideways swipe still turns the arc.
+- **Accessibility:** a drag isn't possible with a screen reader, so Move left and Move right stay in the menu.
+- Not done: reordering in the Apps list, and dragging an app off the arc to remove it.
+*Open for the owner:* the menu now opens after the app has lifted and been put down, which may feel odd; an alternative is a separate way to open it.
+

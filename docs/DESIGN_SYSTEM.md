@@ -224,6 +224,7 @@ The designs are static and no motion spec exists yet. Until one is written:
 - Motion should feel physical and solid: no fades over blur, no parallax glass.
 - Arc: apps rotate along the arc. The focused app scales up and turns Volt.
 - Arc plus slots (D-033): on Android the arc has a plus slot before the first app and after the last, in the notch shape (`notchML`) since circles are for apps only. It sits and rotates like an app: 52 px with a hairline `appBorder` outline, and when focused 68 px with a Volt outline and a Volt plus. The label reads `ADD TO START` or `ADD TO END`. Tapping it when it is focused opens the app picker (the Apps list without what is already on the arc, titled `Add app`). The arc holds at most 10 apps (D-034); a full arc has no plus slots.
+- Arc reorder (D-035): a pressed and held app grows, the moment the hold registers and before any movement, to 1.4 times its size over 140 ms (bigger than the focused app) with a Volt ring, follows the finger's angle along the ring and the others slide aside (160 ms); on release it drops into the nearest place and takes the focus.
 - Slats: horizontal pan changes focus. Vertical flick closes, with velocity-based dismissal.
 - Dials and the hold-to-open ring: the value arc follows the finger 1:1.
 - Default durations are 150–250 ms with standard easing. Respect a system "reduce motion" setting.
