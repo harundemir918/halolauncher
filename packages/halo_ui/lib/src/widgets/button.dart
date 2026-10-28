@@ -1,8 +1,10 @@
+import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
 import '../palette.dart';
 import '../notch_border.dart';
 import '../type.dart';
+import 'tap_target.dart';
 
 enum HaloButtonVariant {
   /// Volt fill, carbon text. The one primary action.
@@ -72,45 +74,43 @@ class HaloButton extends StatelessWidget {
       HaloButtonVariant.bone => halo.yesText,
     };
 
-    return Semantics(
-      button: true,
-      enabled: onPressed != null,
-      label: label,
-      onTap: onPressed,
-      onLongPress: onLongPress,
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onPressed,
-          onLongPress: onLongPress,
-          child: Container(
-            height: small ? 32 : 44,
-            padding: EdgeInsets.symmetric(horizontal: small ? 14 : 20),
-            decoration: ShapeDecoration(
-              color: fill,
-              shape: NotchBorder(
-                radius: small ? HaloRadii.notchS : HaloRadii.notchM,
-                side: outlined
-                    ? BorderSide(color: halo.outline)
-                    : variant == HaloButtonVariant.primary
-                    ? halo.fillSide
-                    : BorderSide.none,
-              ),
+    // The button keeps its design size; its touch target is 48.
+    return HaloTapTarget(
+      properties: SemanticsProperties(
+        button: true,
+        enabled: onPressed != null,
+        label: label,
+        onTap: onPressed,
+        onLongPress: onLongPress,
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        onLongPress: onLongPress,
+        child: Container(
+          height: small ? 32 : 44,
+          padding: EdgeInsets.symmetric(horizontal: small ? 14 : 20),
+          decoration: ShapeDecoration(
+            color: fill,
+            shape: NotchBorder(
+              radius: small ? HaloRadii.notchS : HaloRadii.notchM,
+              side: outlined
+                  ? BorderSide(color: halo.outline)
+                  : variant == HaloButtonVariant.primary
+                  ? halo.fillSide
+                  : BorderSide.none,
             ),
-            // widthFactor keeps the button as wide as its label.
-            child: Center(
-              widthFactor: 1,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: 10)],
-                  Text(label, style: style.copyWith(color: textColor)),
-                  if (trailing != null) ...[
-                    const SizedBox(width: 6),
-                    trailing!,
-                  ],
-                ],
-              ),
+          ),
+          // widthFactor keeps the button as wide as its label.
+          child: Center(
+            widthFactor: 1,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (leading != null) ...[leading!, const SizedBox(width: 10)],
+                Text(label, style: style.copyWith(color: textColor)),
+                if (trailing != null) ...[const SizedBox(width: 6), trailing!],
+              ],
             ),
           ),
         ),

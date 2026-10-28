@@ -1,7 +1,9 @@
+import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
 import '../palette.dart';
 import '../type.dart';
+import 'tap_target.dart';
 
 /// Which dot a timeline item gets.
 enum HaloMark {
@@ -100,23 +102,24 @@ class HaloTextAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = this.color ?? context.halo.muted;
-    return Semantics(
-      button: true,
-      label: label,
-      onTap: onPressed,
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onPressed,
-          child: Container(
-            padding: const EdgeInsets.only(bottom: 2),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: underline ?? color)),
-            ),
-            child: Text(
-              HaloType.upper(label),
-              style: (style ?? HaloType.textAction).copyWith(color: color),
-            ),
+    // The text stays as drawn; its touch target is 48.
+    return HaloTapTarget(
+      properties: SemanticsProperties(
+        button: true,
+        label: label,
+        onTap: onPressed,
+      ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.only(bottom: 2),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: underline ?? color)),
+          ),
+          child: Text(
+            HaloType.upper(label),
+            style: (style ?? HaloType.textAction).copyWith(color: color),
           ),
         ),
       ),
@@ -154,64 +157,74 @@ class HaloTimelineItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final read = mark == HaloMark.read;
     final halo = context.halo;
-    return Semantics(
-      container: true,
-      label: '$source, $time. $body',
-      child: ExcludeSemantics(
-        child: Padding(
-          padding: EdgeInsets.only(top: gapBefore),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Positioned(left: 0, top: 4, child: _Dot(mark)),
-              Padding(
-                padding: const EdgeInsets.only(left: 30),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // A long source (an app and a long title) ellipsizes; the
-                    // time always shows.
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            HaloType.upper(source),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: HaloType.status.copyWith(color: halo.text),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          HaloType.upper(time),
-                          style: HaloType.status.copyWith(color: halo.muted),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      body,
-                      style: HaloType.body.copyWith(
-                        color: read ? halo.textDim : halo.text,
-                      ),
-                    ),
-                    if (actions.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+    // The text is one labelled node (it merges into a tap or a swipe around
+    // the item); each action is a node of its own, so a screen reader can
+    // reach them.
+    return Padding(
+      padding: EdgeInsets.only(top: gapBefore),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 0,
+            top: 4,
+            child: ExcludeSemantics(child: _Dot(mark)),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 30),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  label: '$source, $time. $body',
+                  excludeSemantics: true,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // A long source (an app and a long title) ellipsizes; the
+                      // time always shows.
                       Row(
                         children: [
-                          for (var i = 0; i < actions.length; i++) ...[
-                            if (i > 0) const SizedBox(width: 18),
-                            actions[i],
-                          ],
+                          Expanded(
+                            child: Text(
+                              HaloType.upper(source),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: HaloType.status.copyWith(color: halo.text),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            HaloType.upper(time),
+                            style: HaloType.status.copyWith(color: halo.muted),
+                          ),
                         ],
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        body,
+                        style: HaloType.body.copyWith(
+                          color: read ? halo.textDim : halo.text,
+                        ),
+                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                if (actions.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      for (var i = 0; i < actions.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 18),
+                        actions[i],
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

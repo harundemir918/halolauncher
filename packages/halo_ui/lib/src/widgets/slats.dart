@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 
+import '../motion.dart';
 import '../notch_border.dart';
 import '../palette.dart';
 import '../type.dart';
@@ -78,7 +79,7 @@ class _HaloSlatsState extends State<HaloSlats>
     if (old.focusedIndex != widget.focusedIndex) {
       _pos.animateTo(
         widget.focusedIndex.toDouble(),
-        duration: const Duration(milliseconds: 220),
+        duration: haloMotion(context, const Duration(milliseconds: 220)),
         curve: Curves.easeOutCubic,
       );
     }
@@ -177,7 +178,7 @@ class _SlatTileState extends State<_SlatTile>
     final from = _dy;
     _settle
       ..stop()
-      ..duration = const Duration(milliseconds: 180)
+      ..duration = haloMotion(context, const Duration(milliseconds: 180))
       ..value = 0;
     _anim = Tween<double>(
       begin: from,
@@ -205,6 +206,9 @@ class _SlatTileState extends State<_SlatTile>
     final d = widget.data;
     return Semantics(
       button: true,
+      // One node per slat: its name, open or focus, and Close. What is drawn
+      // inside (the app's preview, the rotated label) is only a picture of it.
+      excludeSemantics: true,
       label: focused ? '${d.label}, focused' : d.label,
       onTap: focused ? widget.onOpen : widget.onTap,
       customSemanticsActions: {

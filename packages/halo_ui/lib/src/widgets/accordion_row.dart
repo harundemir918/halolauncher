@@ -37,69 +37,69 @@ class HaloAccordionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final halo = context.halo;
     final accent = open ? halo.signalText : halo.muted;
-    return Semantics(
-      container: true,
-      button: true,
-      expanded: open,
-      label: '$title, $status',
-      onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: open
-                ? BorderSide(
-                    color: halo.accordionRule,
-                    width: halo.accordionRuleWidth,
-                  )
-                : BorderSide(color: halo.divider),
-            bottom: last ? BorderSide(color: halo.divider) : BorderSide.none,
-          ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          top: open
+              ? BorderSide(
+                  color: halo.accordionRule,
+                  width: halo.accordionRuleWidth,
+                )
+              : BorderSide(color: halo.divider),
+          bottom: last ? BorderSide(color: halo.divider) : BorderSide.none,
         ),
-        child: Padding(
-          padding: EdgeInsets.only(top: 16, bottom: open ? 20 : 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onTap,
-                child: ExcludeSemantics(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        child: Text(
-                          number,
-                          style: HaloType.timeLabel.copyWith(color: accent),
-                        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Only the header is the button, and all of it (its padding too)
+          // is the target; the controls under it are nodes of their own.
+          Semantics(
+            container: true,
+            button: true,
+            expanded: open,
+            label: '$title, $status',
+            onTap: onTap,
+            excludeSemantics: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              excludeFromSemantics: true,
+              child: Padding(
+                padding: EdgeInsets.only(top: 16, bottom: open ? 0 : 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        number,
+                        style: HaloType.timeLabel.copyWith(color: accent),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: HaloType.sectionTitle.copyWith(
-                            color: halo.text,
-                          ),
-                        ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: HaloType.sectionTitle.copyWith(color: halo.text),
                       ),
-                      Text(
-                        HaloType.upper(open ? 'Open' : status),
-                        style: HaloType.accordionStatus.copyWith(color: accent),
-                      ),
-                    ],
-                  ),
+                    ),
+                    Text(
+                      HaloType.upper(open ? 'Open' : status),
+                      style: HaloType.accordionStatus.copyWith(color: accent),
+                    ),
+                  ],
                 ),
               ),
-              if (open && child != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 38, top: 16),
-                  child: child,
-                ),
-            ],
+            ),
           ),
-        ),
+          if (open)
+            Padding(
+              padding: const EdgeInsets.only(left: 38, top: 16, bottom: 20),
+              child: child ?? const SizedBox.shrink(),
+            ),
+        ],
       ),
     );
   }

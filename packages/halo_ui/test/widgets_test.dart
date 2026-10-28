@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_ui/halo_ui.dart';
@@ -681,6 +682,145 @@ void main() {
         final g = await hold(tester, 1);
         expect(held?.id, 'app1');
         await g.up();
+      });
+    });
+
+    group('with a screen reader', () {
+      testWidgets('activating an app opens it, focused or not', (tester) async {
+        final handle = tester.ensureSemantics();
+        final launched = <String>[];
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: HaloTheme.dark(),
+            home: Scaffold(
+              body: HaloArc(
+                apps: apps(5),
+                focusedIndex: 2,
+                onFocus: (_) {},
+                onLaunch: (a) => launched.add(a.id),
+              ),
+            ),
+          ),
+        );
+        // Not the focused one: a finger would only turn the arc to it.
+        tester.semantics.tap(find.semantics.byLabel('App 3'));
+        await tester.pump();
+        expect(launched, ['app3']);
+        handle.dispose();
+      });
+
+      testWidgets('the moves of a drag are named actions', (tester) async {
+        final handle = tester.ensureSemantics();
+        final moved = <(String, int)>[];
+        final focused = <int>[];
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: HaloTheme.dark(),
+            home: Scaffold(
+              body: HaloArc(
+                apps: apps(5),
+                focusedIndex: 2,
+                onFocus: focused.add,
+                onLaunch: (_) {},
+                onReorder: (a, to) => moved.add((a.id, to)),
+              ),
+            ),
+          ),
+        );
+        List<(String, int)> actions(String label) {
+          final node = find.semantics.byLabel(label).evaluate().single;
+          return [
+            for (final id in node.getSemanticsData().customSemanticsActionIds!)
+              (CustomSemanticsAction.getAction(id)!.label ?? '', id),
+          ];
+        }
+
+        expect(
+          actions('App 3').map((a) => a.$1),
+          unorderedEquals(['Move left', 'Move right']),
+        );
+        // The first can't go left, the last can't go right.
+        expect(actions('App 0').map((a) => a.$1), ['Move right']);
+        expect(actions('App 4').map((a) => a.$1), ['Move left']);
+
+        final right = actions('App 3').firstWhere((a) => a.$1 == 'Move right');
+        RendererBinding.instance.renderViews.first.owner!.semanticsOwner!
+            .performAction(
+              find.semantics.byLabel('App 3').evaluate().single.id,
+              SemanticsAction.customAction,
+              right.$2,
+            );
+        await tester.pump();
+        expect(moved, [('app3', 4)]);
+        expect(focused, [4]);
+        handle.dispose();
+      });
+    });
+
+    group('reduce motion', () {
+      Future<void> pumpAt(
+        WidgetTester tester,
+        int focused, {
+        required bool reduced,
+      }) {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        return tester.pumpWidget(
+          MaterialApp(
+            theme: HaloTheme.dark(),
+            home: Builder(
+              // Inside the app, which sets its own MediaQuery.
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(disableAnimations: reduced),
+                child: Scaffold(
+                  body: HaloArc(
+                    apps: apps(5),
+                    focusedIndex: focused,
+                    onFocus: (_) {},
+                    onLaunch: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      Offset app2(WidgetTester tester) =>
+          tester.getCenter(find.byKey(const ValueKey('arc-app2')));
+
+      testWidgets('the arc normally turns over several frames', (tester) async {
+        await pumpAt(tester, 2, reduced: false);
+        final focused = app2(tester);
+        await pumpAt(tester, 0, reduced: false);
+        await tester.pumpAndSettle();
+        await pumpAt(tester, 2, reduced: false);
+        await tester.pump(const Duration(milliseconds: 40));
+        // Still on its way.
+        expect((app2(tester) - focused).distance, greaterThan(1));
+        await tester.pumpAndSettle();
+        expect(app2(tester).dx, closeTo(focused.dx, 0.5));
+      });
+
+      testWidgets('with animations removed it turns in a single frame', (
+        tester,
+      ) async {
+        await pumpAt(tester, 2, reduced: true);
+        final focused = app2(tester);
+        await pumpAt(tester, 0, reduced: true);
+        await tester.pump();
+        await pumpAt(tester, 2, reduced: true);
+        await tester.pump();
+        expect(app2(tester).dx, closeTo(focused.dx, 0.5));
+        expect(app2(tester).dy, closeTo(focused.dy, 0.5));
       });
     });
 

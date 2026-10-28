@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 
 import 'package:flutter/scheduler.dart' show Ticker;
+import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/widgets.dart';
 
+import '../motion.dart';
 import '../notch_border.dart';
 import '../palette.dart';
 import '../type.dart';
@@ -250,7 +252,7 @@ class _HaloArcState extends State<HaloArc> with TickerProviderStateMixin {
     if (index == widget.focusedIndex) {
       _pos.animateTo(
         index.toDouble(),
-        duration: const Duration(milliseconds: 180),
+        duration: haloMotion(context, const Duration(milliseconds: 180)),
         curve: Curves.easeOutCubic,
       );
     } else {
@@ -267,7 +269,7 @@ class _HaloArcState extends State<HaloArc> with TickerProviderStateMixin {
     if (old.focusedIndex != widget.focusedIndex) {
       _pos.animateTo(
         widget.focusedIndex.toDouble(),
-        duration: const Duration(milliseconds: 220),
+        duration: haloMotion(context, const Duration(milliseconds: 220)),
         curve: Curves.easeOutCubic,
       );
     }
@@ -286,7 +288,7 @@ class _HaloArcState extends State<HaloArc> with TickerProviderStateMixin {
     if (target == widget.focusedIndex) {
       _pos.animateTo(
         target.toDouble(),
-        duration: const Duration(milliseconds: 180),
+        duration: haloMotion(context, const Duration(milliseconds: 180)),
         curve: Curves.easeOutCubic,
       );
     } else {
@@ -380,7 +382,10 @@ class _HaloArcState extends State<HaloArc> with TickerProviderStateMixin {
                       key: ValueKey('arc-slot-${apps[i].id}'),
                       tween: Tween<double>(end: slotOf(i)),
                       duration: reordering && i != from
-                          ? const Duration(milliseconds: 160)
+                          ? haloMotion(
+                              context,
+                              const Duration(milliseconds: 160),
+                            )
                           : Duration.zero,
                       curve: Curves.easeOutCubic,
                       // The dragged app grows as it lifts, so it is plain that
@@ -392,7 +397,10 @@ class _HaloArcState extends State<HaloArc> with TickerProviderStateMixin {
                                   ? HaloArc.liftScale
                                   : 1,
                             ),
-                            duration: const Duration(milliseconds: 140),
+                            duration: haloMotion(
+                              context,
+                              const Duration(milliseconds: 140),
+                            ),
                             curve: Curves.easeOutCubic,
                             builder: (context, scale, _) => _app(
                               i,
@@ -516,10 +524,26 @@ class _HaloArcState extends State<HaloArc> with TickerProviderStateMixin {
       child: Semantics(
         button: true,
         label: app.unread ? '${app.label}, unread' : app.label,
-        onTap: () => focused ? widget.onLaunch(app) : widget.onFocus(i),
+        // A screen reader picks an app by its name: activating it opens it,
+        // with no focusing step first (that is for a finger, to see the arc
+        // turn).
+        onTap: () => widget.onLaunch(app),
         onLongPress: widget.onLongPress == null
             ? null
             : () => widget.onLongPress!(app),
+        // A drag isn't possible with a screen reader: the same moves, named.
+        customSemanticsActions: {
+          if (reorder && i > 0)
+            const CustomSemanticsAction(label: 'Move left'): () {
+              widget.onReorder!(app, i - 1);
+              widget.onFocus(i - 1);
+            },
+          if (reorder && i < widget.apps.length - 1)
+            const CustomSemanticsAction(label: 'Move right'): () {
+              widget.onReorder!(app, i + 1);
+              widget.onFocus(i + 1);
+            },
+        },
         child: ExcludeSemantics(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,

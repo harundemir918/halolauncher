@@ -150,6 +150,12 @@ class HaloLetterIndex extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final halo = context.halo;
+    // A scrubber for a thumb: a screen reader has the list itself, in order,
+    // and search, so this strip of letters would only be noise to it.
+    return ExcludeSemantics(child: _scrubber(halo));
+  }
+
+  Widget _scrubber(HaloPalette halo) {
     return LayoutBuilder(
       builder: (context, box) => GestureDetector(
         behavior: HitTestBehavior.opaque,
