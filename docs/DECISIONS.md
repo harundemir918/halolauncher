@@ -167,3 +167,14 @@ Phase 7 builds on D-028. All rule-based, all from data on the phone (D-012); the
 - **Unverified:** the missed-call category (`missed_call`) is set by the stock dialer apps but isn't a public constant; other dialers may not set it, and then a missed call is just an app notification.
 *Open for the owner:* the one-hour window for "event soon", and whether a missed call should be a NOW pick.
 
+## D-031 · First-run welcome. **Proposed** (2026-10-28)
+The first time Halo starts on Android it shows a Welcome screen instead of Home: "Make Halo your home" with a row for the home app and one for each optional access (the same rows as System's Privacy, each saying what it is for), and a Continue button that is always there. Nothing is required; tapping a row opens the usual Android dialog or Settings page, and the rows follow when the user comes back. Continue records `welcomed` in Halo's own preferences, so it is shown once. Without the grants Home still renders and keeps its own ALLOW rows and the "Set Halo as home?" card (CLAUDE.md rule 5).
+- There is no design for this screen. It is built from existing parts (kicker, headline, toggle rows, button) in the Home layout, in both appearances. *Open for the owner:* the copy and whether it deserves a designed screen.
+- Existing installs see it once after updating, since they have no `welcomed` yet.
+- Not done: a re-run from System, a step-by-step flow with one permission per page.
+
+## D-032 · Crash reporting and the privacy policy. **Proposed** (2026-10-28)
+Rule 6 and rule 7 rule out a crash reporter SDK that sends data, and the release build has no internet permission at all (checked in the built APK), so Halo can't send anything. Crash data comes from the store instead: Play Console's Android vitals (crashes and ANRs from users who opted in to share diagnostics with Google) needs nothing inside Halo. `docs/PRIVACY.md` says so.
+- **Releasing needs the owner:** a keystore (see ARCHITECTURE, Releasing), a contact address and a public URL for the policy, and the choice of store (Play, F-Droid, or both). F-Droid builds from source and signs with its own key unless reproducible builds are set up.
+*Open for the owner:* store, and whether a local "last crash" log the user can share by hand is wanted.
+

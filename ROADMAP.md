@@ -111,10 +111,10 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 **Exit:** summaries, the NOW pick and commands work offline from Halo's own data, with nothing leaving the phone.
 
 ## Phase 8: Release
-- ☐ Performance: cold start of the launcher, 60/120 fps on the arc, slats and transitions on a mid-range phone; low memory use so Android doesn't kill the launcher
-- ☐ First-run onboarding: set as default, explain and request each permission, and work in a degraded state without any of them
-- ☐ Privacy policy (notifications, calendar and usage data stay on the device)
-- ☐ Signing, versioning, Play Store listing (or F-Droid), crash reporting that doesn't send personal data
+- ☑ Performance: cold start of the launcher, 60/120 fps on the arc, slats and transitions on a mid-range phone; low memory use so Android doesn't kill the launcher. Release build on the Galaxy SM-G780G (120 Hz, Android 13): the bench holds about 120 fps with build about 1 ms and raster about 2.7 ms (p99 4.6 ms) against an 8.3 ms frame; cold start about 0.53 s; about 156 MB PSS. On the Pixel 10 Pro emulator: cold start about 0.5 s, about 185 MB PSS. Not yet tried on a low-end phone
+- ☑ First-run onboarding: set as default, explain and request each permission, and work in a degraded state without any of them (D-031)
+- ◐ Privacy policy (notifications, calendar and usage data stay on the device): drafted in `docs/PRIVACY.md`; needs the owner's contact and a public URL
+- ◐ Signing, versioning, Play Store listing (or F-Droid), crash reporting that doesn't send personal data: signing reads `key.properties` and versioning is documented (ARCHITECTURE §7); crash reporting is the store's (D-032); waiting on the owner for the keystore, the store choice and the listing
 
 **Exit:** a public beta on the Play Store.
 

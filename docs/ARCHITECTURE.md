@@ -83,3 +83,11 @@ A Flutter plugin with a Kotlin side and a Dart side.
 ## 6. Versions
 
 Flutter 3.47.4 (`.flutter-version`), Android Gradle Plugin 9.1.0, Kotlin 2.4.0, Gradle 9.3.1, Java 17 bytecode. `minSdk` 29, `targetSdk` and `compileSdk` 36 (D-018). Application id `com.baklavapp.halolauncher` (D-020).
+
+## 7. Releasing
+
+- **Signing:** create a keystore once (`keytool -genkeypair -v -keystore ~/halo-release.jks -alias halo -keyalg RSA -keysize 2048 -validity 10000`) and keep it and its passwords out of the repo, with a backup: losing it means losing the ability to update the app. Put its details in `launcher/android/key.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`; the file and `*.jks` are gitignored). `flutter build appbundle --release` then signs with it. Without `key.properties` a release build is signed with the debug key: it installs for testing but can't be published.
+- **Version:** `version: name+code` in `launcher/pubspec.yaml`. The code after `+` must go up with every upload.
+- **Permissions:** the release manifest has no `INTERNET` permission (only debug and profile builds do, for the Flutter tooling). Check with `aapt2 dump permissions app-release.apk`.
+- **Measuring performance:** `flutter build apk --release --dart-define=HALO_START=bench`, install, open it, and read `HALO_BENCH` lines from `adb logcat`: build and raster milliseconds per 300 frames of the Home screen sliding. Judge on a real mid-range phone, not the emulator.
+
