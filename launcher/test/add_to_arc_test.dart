@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_launcher/apps/apps_screen.dart';
@@ -206,6 +207,53 @@ void main() {
       await tester.longPress(find.byKey(const ValueKey('row-x5')));
       await tester.pumpAndSettle();
       expect(find.text('Add to arc'), findsOneWidget);
+    });
+  });
+
+  group('reordering the arc by dragging', () {
+    Offset at(WidgetTester tester, String id) =>
+        tester.getCenter(find.byKey(ValueKey('arc-$id')));
+
+    testWidgets('dropping an app on another place saves the new order', (
+      tester,
+    ) async {
+      final b = MockBackend();
+      expect(b.arcApps.map((a) => a.id), [
+        'notes',
+        'maps',
+        'music',
+        'messages',
+        'camera',
+        'web',
+        'phone',
+      ]);
+      await pumpLauncher(tester, b);
+      final g = await tester.startGesture(at(tester, 'music'));
+      await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+      await g.moveTo(at(tester, 'camera'));
+      await tester.pumpAndSettle();
+      await g.up();
+      await tester.pumpAndSettle();
+      expect(b.arcApps.map((a) => a.id), [
+        'notes',
+        'maps',
+        'messages',
+        'camera',
+        'music',
+        'web',
+        'phone',
+      ]);
+      // The dropped app is the focused one.
+      expect(find.text('MUSIC'), findsOneWidget);
+    });
+
+    testWidgets('holding without moving still opens the menu', (tester) async {
+      final b = MockBackend();
+      await pumpLauncher(tester, b);
+      await tester.longPress(find.byKey(const ValueKey('arc-music')));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove from arc'), findsOneWidget);
+      expect(b.arcApps.map((a) => a.id).toList().indexOf('music'), 2);
     });
   });
 }

@@ -122,6 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
               focusedIndex: focused,
               onFocus: (i) => setState(() => _focused = i),
               onLaunch: (app) => widget.onLaunch(app.id),
+              // Dragging an app to another place on the arc.
+              onReorder: (app, to) => b.moveOnArc(
+                app.id,
+                to - arc.indexWhere((a) => a.id == app.id),
+              ),
               onAddStart: canAdd ? () => widget.onAddToArc!(true) : null,
               onAddEnd: canAdd ? () => widget.onAddToArc!(false) : null,
               onLongPress: widget.onLongPress == null
