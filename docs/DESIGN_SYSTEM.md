@@ -256,3 +256,7 @@ The design system ships as the Dart package `packages/halo_ui`:
 
 Every app on the Home arc is drawn from its monochrome icon: bone on a `surface` circle, and the focused app a Volt circle with the icon in carbon. The design's glyphs (`HaloIcons`) are what the mock and the goldens draw, and the fallback for an app that fills a design role (camera, messages, phone, browser, maps, music) and has no mask; an app that fills no role falls back to its color icon. The Apps list keeps color icons.
 
+## Logo (D-039)
+
+The mark is the hold ring made bolder, centered on a 108 × 108 canvas: a ring of radius 29 in bone at 30% (3.2 stroke), a Volt arc on it from 12 o'clock over 120 degrees clockwise (7.2 stroke, round caps), and a Volt dot of radius 8.4, on carbon `#0C0C0B`. Nothing outside a 66 dp circle, so Android's masks (circle, squircle, rounded square) never cut it. Themed icons get the same shapes in one color. Source: `design/logo/halo.svg`; Android: `res/drawable/ic_launcher_foreground.xml`, `ic_launcher_monochrome.xml`; PNGs: `design/logo/render.py`.
+

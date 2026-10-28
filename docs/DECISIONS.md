@@ -223,3 +223,9 @@ Three things found on the phone:
 - **System's "find a setting"** was a bare field that did nothing. It now filters System's sections by their name or what is in them (typing "bluetooth" finds Connections, "text size" finds Display), lists Android's own settings pages that match (they open the real page), and Go opens the best match. Choosing a section closes the results and opens it.
 - **No avatar without an account.** Android tells a launcher nothing about who the user is, so the System title's avatar was an empty box. It is drawn only when the backend has initials (the mock does).
 
+## D-039 · The Halo mark and the app icon. **Proposed** (2026-10-28)
+The app's icon was Flutter's default. The mark is the Lock screen's hold ring made bolder: a ring (the halo, bone at 30%), a Volt arc from 12 o'clock over 120 degrees (what is active, as the segment under the focused app), and a Volt dot at the center, on carbon. Only the palette's three colors, no wordmark, no notch (it is an app, so a circle is allowed, and the system masks it).
+- **Android:** an adaptive icon (`mipmap-anydpi-v26/ic_launcher.xml`): a solid carbon background, a vector foreground that stays inside the 66 dp safe circle, and a one-color `monochrome` layer so Android 13's themed icons tint it. The old PNGs are gone (minSdk 29 always has adaptive icons).
+- **Everywhere else:** `design/logo/halo.svg` is the source. `design/logo/render.py` (Pillow) makes the 512 px store icon and macOS's icon set from the same numbers. If the mark changes, change the SVG, the two vector drawables and `render.py` together.
+*Open for the owner:* the mark itself (proportions, whether the arc should sit at another angle), and a wordmark for the store listing.
+

@@ -1,5 +1,7 @@
 # Halo Launcher
 
+<img src="design/logo/halo-icon-512.png" alt="The Halo mark: a ring, a Volt arc and a Volt dot" width="96" align="right">
+
 An Android home-screen launcher built with Flutter, based on the Halo design language.
 
 > No grid · No glass · No dock.
