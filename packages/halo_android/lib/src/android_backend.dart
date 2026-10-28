@@ -34,6 +34,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       b._loadApps(),
       b._loadBattery(),
       b._loadDefaultHome(),
+      b._loadWelcomed(),
       b._loadSettings(),
       b._loadPrivateSpace(),
       b._loadContactsAccess(),
@@ -391,6 +392,28 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   Future<void> _loadDefaultHome() async {
     _isDefaultHome =
         await _methods.invokeMethod<bool>('isDefaultHome') ?? false;
+  }
+
+  bool _welcomed = true;
+
+  Future<void> _loadWelcomed() async {
+    final saved = await _methods.invokeMethod<String>('getPref', {
+      'key': 'welcomed',
+    });
+    _welcomed = saved == 'true';
+  }
+
+  @override
+  bool get welcomed => _welcomed;
+
+  @override
+  Future<void> markWelcomed() async {
+    _welcomed = true;
+    await _methods.invokeMethod<void>('setPref', {
+      'key': 'welcomed',
+      'value': 'true',
+    });
+    _notify();
   }
 
   @override
