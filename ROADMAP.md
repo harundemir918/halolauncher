@@ -34,13 +34,13 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 ## Phase 2: Design system and screens (carried over)
 - ☑ `packages/halo_ui`: tokens (colors, type, notch radii, spacing), bundled fonts, `NotchBorder`, `HaloTheme`
-- ◐ Widgets: all done except CommandField ◐ (looks right, no text entry yet): Switch, ToggleRow, Segmented, Slider, Buttons, BatteryLine, BatteryCells, Kicker, Dial, Slats, Timeline, Arc, plus StatusRow, EventCard, ActionCard, AgendaRow, SummaryCard, MediaStrip, Avatar, Chip, icons
+- ☑ Widgets: all done (CommandField is the text field: search, Ask Halo and Stream's reply field type into it): Switch, ToggleRow, Segmented, Slider, Buttons, BatteryLine, BatteryCells, Kicker, Dial, Slats, Timeline, Arc, plus StatusRow, EventCard, ActionCard, AgendaRow, SummaryCard, MediaStrip, Avatar, Chip, icons
 - ◐ `packages/halo_sdk` API surface plus the **mock** backend (fixtures matching the design copy: Elif, Design review, Room 3…). Clock, status, next event and notifications so far
 - ☑ Screens: Lock, Home Arc, Recents, Switchboard, Stream, System (`launcher/`). System: only Display has designed contents; the other sections say "not designed yet"
 - ☑ Navigation and gestures on desktop: hold-to-open, the arc's drag/focus/launch, slat focus and flick-to-close, edge swipes (top right Switchboard, top left Stream, bottom up Home then Recents)
 - ◐ Golden tests at 390 × 844 @2x: every screen has one (`launcher/test/goldens/`), compared with `design/screens/*.png` by eye, not by pixel diff. CI skips them (`--exclude-tags golden`)
 - ☑ Light appearance: palette, every widget and screen reading it, theme picked from System > Appearance (Auto follows the platform), light goldens against `design/screens/*_light.png`
-- ◐ Accessibility pass: semantics labels, text scaling (System > Text size, and Android font scale), reduce motion (Android "remove animations"): built and tested against the semantics tree, 48 dp touch targets, real text size with per-screen caps, reduce motion, screen-reader actions for Stream and the arc (D-036); a by-hand TalkBack pass on a phone is still to do
+- ☑ Accessibility pass: semantics labels, text scaling (System > Text size, and Android font scale), reduce motion (Android "remove animations"): built and tested against the semantics tree, 48 dp touch targets, real text size with per-screen caps, reduce motion, screen-reader actions for Stream and the arc (D-036); checked by hand with TalkBack on the Galaxy (owner, 2026-10-28)
 
 **Exit:** all six screens match the designs in golden tests in both appearances, and the launcher is fully navigable on macOS with mock data.
 
@@ -80,7 +80,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 ## Phase 5: Switchboard and System ☑
 - ☑ Brightness dial: reads the real level and auto mode, sets it with the `WRITE_SETTINGS` grant; without it the dial reads only and its footer (`TAP TO ALLOW`) opens the grant screen. With the grant the footer turns auto brightness on and off
 - ☑ Sound dial: media volume, set directly; the footer shows the ringer mode (`MEDIA · RING`, `VIBRATE`, `SILENT`) read-only
-- ☑ Media strip: play/pause, flick left or right across the card to skip, a long title slides, and the progress bar seeks by drag or tap when the player allows it (D-037). Artwork ☐ (the design has no place for it)
+- ☑ Media strip: play/pause, flick left or right across the card to skip, a long title slides, and the progress bar seeks by drag or tap when the player allows it (D-037). Artwork: not wanted for now (owner, 2026-10-28; the design has no place for it)
 - ☑ Battery line and cells from `BatteryManager`; "full by" from `computeChargeTimeRemaining()` while charging (unit tested; the emulator is at 100%, so not seen on screen)
 - ☑ Connection rows (Wi-Fi, Bluetooth, Cellular, Airplane) show the real state and stay in step when it changes; Android doesn't let an app switch them, so the switch opens the matching Settings panel (D-029)
 - ☑ Focus row mapped to Do Not Disturb: on and off with notification policy access, which the row asks for when it is missing
