@@ -1,11 +1,9 @@
-import 'dart:math' as math;
-
 import 'package:flutter/widgets.dart';
 
 /// One line of text. When it fits it just sits; when it is wider than its
-/// space it waits, slides to its end, waits, slides back, and goes on, so the
-/// whole of it can be read. With Android's "Remove animations" it stays still
-/// and ends in an ellipsis instead.
+/// space it rests, then moves left without stopping, coming round again from
+/// the right, so the whole of it can be read and it never turns back. With
+/// Android's "Remove animations" it stays still and ends in an ellipsis.
 class HaloMarquee extends StatefulWidget {
   const HaloMarquee(
     this.text, {
@@ -13,17 +11,20 @@ class HaloMarquee extends StatefulWidget {
     required this.style,
     this.pause = const Duration(milliseconds: 1500),
     this.speed = 36,
+    this.gap = 48,
   });
 
   final String text;
   final TextStyle style;
 
-  /// How long it rests at each end.
+  /// How long it rests with its beginning in view, before each round.
   final Duration pause;
 
-  /// Logical pixels per second on the way out; it comes back three times
-  /// faster.
+  /// Logical pixels per second.
   final double speed;
+
+  /// The space between the end of the text and its beginning coming round.
+  final double gap;
 
   @override
   State<HaloMarquee> createState() => _HaloMarqueeState();
@@ -35,6 +36,10 @@ class _HaloMarqueeState extends State<HaloMarquee>
 
   /// How far past its space the text runs, as last measured; -1 until then.
   double _overflow = -1;
+
+  /// One round: the text and the gap, which brings its copy to where it
+  /// started.
+  double _travel = 0;
 
   @override
   void didUpdateWidget(HaloMarquee old) {
@@ -52,40 +57,32 @@ class _HaloMarqueeState extends State<HaloMarquee>
     super.dispose();
   }
 
-  Duration get _out =>
-      Duration(microseconds: (_overflow / widget.speed * 1e6).round());
-  Duration get _back => Duration(
-    microseconds: math.max(
-      350000,
-      (_overflow / (widget.speed * 3) * 1e6).round(),
-    ),
-  );
-  Duration get _total => widget.pause * 2 + _out + _back;
+  Duration get _round =>
+      Duration(microseconds: (_travel / widget.speed * 1e6).round());
+  Duration get _total => widget.pause + _round;
 
-  /// The text's offset to the left, 0 to the overflow, at [t] of a cycle.
+  /// How far left the text has gone, at [t] of a cycle: at rest first, then
+  /// steadily one whole round, which ends exactly where it began.
   double _offset(double t) {
     final at = t * _total.inMicroseconds;
     final pause = widget.pause.inMicroseconds;
-    final out = _out.inMicroseconds;
-    final back = _back.inMicroseconds;
     if (at < pause) return 0;
-    if (at < pause + out) {
-      return _overflow * Curves.easeInOutSine.transform((at - pause) / out);
-    }
-    if (at < 2 * pause + out) return _overflow;
-    final b = ((at - 2 * pause - out) / back).clamp(0.0, 1.0);
-    return _overflow * (1 - Curves.easeInOutSine.transform(b));
+    return _travel * ((at - pause) / _round.inMicroseconds).clamp(0.0, 1.0);
   }
 
-  void _sync(double overflow) {
+  void _sync(double overflow, double textWidth) {
     if (!mounted) return;
     if (overflow <= 0.5) {
       _overflow = 0;
       _c.stop();
       return;
     }
-    if ((overflow - _overflow).abs() > 0.5 || !_c.isAnimating) {
+    final travel = textWidth + widget.gap;
+    if ((overflow - _overflow).abs() > 0.5 ||
+        (travel - _travel).abs() > 0.5 ||
+        !_c.isAnimating) {
       _overflow = overflow;
+      _travel = travel;
       _c
         ..duration = _total
         ..repeat();
@@ -107,7 +104,9 @@ class _HaloMarqueeState extends State<HaloMarquee>
         final overflow = reduced || !box.maxWidth.isFinite
             ? 0.0
             : line.width - box.maxWidth;
-        WidgetsBinding.instance.addPostFrameCallback((_) => _sync(overflow));
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _sync(overflow, line.width),
+        );
         if (overflow <= 0.5) {
           return Text(
             widget.text,
@@ -130,12 +129,30 @@ class _HaloMarqueeState extends State<HaloMarquee>
                   child: child,
                 ),
               ),
-              child: Text(
-                widget.text,
-                maxLines: 1,
-                softWrap: false,
-                overflow: TextOverflow.visible,
-                style: widget.style,
+              // The text, a gap, and its copy: when the first has gone a whole
+              // round the copy is where it began.
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.text,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.visible,
+                    style: widget.style,
+                  ),
+                  SizedBox(width: widget.gap),
+                  // Only a picture of it: a screen reader reads the title once.
+                  ExcludeSemantics(
+                    child: Text(
+                      widget.text,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
+                      style: widget.style,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

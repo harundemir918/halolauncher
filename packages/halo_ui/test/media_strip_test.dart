@@ -197,34 +197,67 @@ void main() {
 
     const long = 'A Very Long Track Name That Cannot Possibly Fit In The Card';
 
-    testWidgets('a long one waits, slides to its end, and comes back', (
+    testWidgets('a long one rests, then goes round and round, never back', (
       tester,
     ) async {
       await pumpStrip(tester, title: long);
-      Finder text() => find.text(long);
+      Finder text() => find.text(long).first;
       final start = tester.getTopLeft(text()).dx;
-      // Over a few whole cycles (one is about 14 s here).
+      final width = tester.getSize(text()).width;
+      // Over a few whole rounds (one is about 27 s with this test font).
       final xs = <double>[start];
-      for (var i = 0; i < 450; i++) {
+      final copy = <double>[];
+      for (var i = 0; i < 900; i++) {
         await tester.pump(const Duration(milliseconds: 100));
         xs.add(tester.getTopLeft(text()).dx);
+        copy.add(tester.getTopLeft(find.text(long).last).dx);
       }
-      // It rests at the start first.
+      // It rests with its beginning in view first.
       expect(xs.take(10).every((x) => (x - start).abs() < 0.01), isTrue);
-      // It slides left until the end of the text is in the card.
-      final far = xs.reduce((a, b) => a < b ? a : b);
-      final end = far + tester.getSize(text()).width;
-      expect(end, closeTo(card(tester).right - 14, 1));
-      // And, having been there, it comes back to the start.
-      final atEnd = xs.indexWhere((x) => (x - far).abs() < 0.5);
-      expect(atEnd, greaterThan(0));
+      final steps = [for (var i = 1; i < xs.length; i++) xs[i] - xs[i - 1]];
+      // It only ever moves left, except when a round ends and it is back at
+      // the start, which is a jump right to where it began.
+      final wraps = [
+        for (var i = 0; i < steps.length; i++)
+          if (steps[i] > 1) i,
+      ];
+      expect(wraps.length, greaterThanOrEqualTo(2), reason: 'goes round again');
+      for (final w in wraps) {
+        expect(
+          xs[w + 1],
+          closeTo(start, 4),
+          reason: 'a round ends at the start',
+        );
+      }
       expect(
-        xs.skip(atEnd).any((x) => (x - start).abs() < 0.5),
+        [
+          for (var i = 0; i < steps.length; i++)
+            if (!wraps.contains(i)) steps[i],
+        ].every((d) => d <= 0.01),
         isTrue,
-        reason: 'it goes back to the start after reaching the end',
+        reason: 'never slides back',
       );
-      // Never to the right of where it began.
-      expect(xs.every((x) => x <= start + 0.01), isTrue);
+      // At a steady 36 px a second, 3.6 px every 100 ms.
+      final moving = [
+        for (var i = 0; i < steps.length; i++)
+          if (!wraps.contains(i) && steps[i] < -0.5) steps[i],
+      ];
+      expect(moving, isNotEmpty);
+      // (A step where the rest ends or a round ends is only partly a step.)
+      expect(moving.every((d) => d >= -4.1), isTrue, reason: 'never faster');
+      expect(
+        moving.where((d) => (d + 3.6).abs() < 0.2).length,
+        greaterThan(moving.length * 0.9),
+      );
+      // The copy comes in from the right while the end of the text leaves.
+      final r = card(tester);
+      expect(
+        copy.any((x) => x > r.left + 82 && x < r.right - 14),
+        isTrue,
+        reason: 'the beginning comes round into the card',
+      );
+      // One round brings the text its own width and the gap to the left.
+      expect(width, greaterThan(card(tester).width));
     });
 
     testWidgets('it never draws outside the card', (tester) async {
@@ -233,7 +266,7 @@ void main() {
       // The text is wider than the card but clipped to it.
       expect(find.byType(ClipRect), findsWidgets);
       expect(
-        tester.getSize(find.text(long)).width,
+        tester.getSize(find.text(long).first).width,
         greaterThan(card(tester).width),
       );
     });
@@ -257,7 +290,7 @@ void main() {
       await pumpStrip(tester, title: other);
       await tester.pump(const Duration(milliseconds: 100));
       final left = card(tester).left + 68 + 14;
-      expect(tester.getTopLeft(find.text(other)).dx, closeTo(left, 1));
+      expect(tester.getTopLeft(find.text(other).first).dx, closeTo(left, 1));
     });
   });
 }

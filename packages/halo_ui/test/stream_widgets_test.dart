@@ -237,7 +237,8 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    final title = tester.getTopLeft(find.textContaining('A very long'));
+    // A title that long slides: its copy coming round is the second one.
+    final title = tester.getTopLeft(find.textContaining('A very long').first);
     final artist = tester.getTopLeft(find.text('MIRA OKAFOR'));
     expect(artist.dy, greaterThan(title.dy));
     expect(artist.dx, title.dx);
