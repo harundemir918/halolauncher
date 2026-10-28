@@ -178,3 +178,10 @@ Rule 6 and rule 7 rule out a crash reporter SDK that sends data, and the release
 - **Releasing needs the owner:** a keystore (see ARCHITECTURE, Releasing), a contact address and a public URL for the policy, and the choice of store (Play, F-Droid, or both). F-Droid builds from source and signs with its own key unless reproducible builds are set up.
 *Open for the owner:* store, and whether a local "last crash" log the user can share by hand is wanted.
 
+## D-033 · Plus slots at the ends of the arc. **Proposed** (2026-10-28)
+Adding an app to the arc meant the long-press menu's "Add to arc", which always put it at the right end. The arc now has a plus slot at each end (`HaloArc.onAddStart`, `onAddEnd`): rotate to it, tap it, and Apps opens as a picker (`Add app`: only apps not on the arc, search works, Go adds the best match, back adds nothing). The chosen app is added at that end and Home returns with it focused. `pinToArc` takes `atStart`.
+- The design has no such slot. It is drawn in the notch shape (not a circle, since it isn't an app) with the arc's own outline and focus treatment, so it stays inside rule 3. It is Android only: the macOS and golden screens pass no callbacks and look as designed.
+- With no apps on the arc there is a single plus (the end one).
+- Not done: dragging an app to a chosen place in the middle (the menu's Move left and right still do that), and a limit on the arc's length.
+*Open for the owner:* whether the plus slots should also be reachable from outside the arc's reach (they only show when the arc is rotated near an end).
+
