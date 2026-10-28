@@ -101,12 +101,12 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 
 *Status (2026-10-27):* Recents holds on a Pixel 10 Pro emulator (Android 17): without usage access it asks and the button opens Settings > Usage access; with it, apps opened a moment before showed newest first, each with its icon and a wash of its color, a flick dropped Maps and the next app took the last slot, and a tap on the focused slat brought Settings to the front. Not yet checked on the Galaxy S20 FE. The glance page opened with a swipe right on Home, showed the real clock, the date and a real notification preview with only the Camera shortcut, and a swipe left returned to Home.
 
-## Phase 7: Rule-based Halo (no AI, D-012)
+## Phase 7: Rule-based Halo (no AI, D-012) ☑ (D-030)
 - ☑ Decided: no AI, on the phone or in the cloud (D-012)
-- ☐ The Stream summary from rules ("Halo read 11 things for you / 3 need you"): what counts as read, what needs you (replies waiting, missed calls, events soon)
-- ☐ The Home "NOW" pick from rules: the next event, else the top message, else "Clear for the day"
-- ☐ Notification priority from rules (people over apps, the user's starred contacts, Focus)
-- ☐ Ask Halo step 2: rule-based commands typed into the search field ("next", "reply Elif …", "dark", "battery"), shown as results above the search sections
+- ☑ The Stream summary from rules ("Halo read 11 things for you / 3 need you"): what counts as read, what needs you (replies waiting, missed calls, events soon)
+- ☑ The Home "NOW" pick from rules: the next event, else the top message, else "Clear for the day"
+- ☑ Notification priority from rules (people over apps, the user's starred contacts, Focus)
+- ☑ Ask Halo step 2: rule-based commands typed into the search field ("next", "reply Elif …", "dark", "battery"), shown as results above the search sections
 
 **Exit:** summaries, the NOW pick and commands work offline from Halo's own data, with nothing leaving the phone.
 
@@ -133,4 +133,4 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - **Ringer mode on the Sound dial:** read-only for now. Silent needs Do Not Disturb access, vibrate does not; should a tap on the footer cycle them?
 - **Radios (D-029):** Android doesn't let an app switch Wi-Fi, Bluetooth, mobile data or airplane mode, so those rows open a Settings panel.
 - **Notification actions beyond reply:** which ones Stream should show (Mark as read, Archive, Call back), and how without crowding the design.
-- **Ask Halo commands:** which commands to support first (Phase 7, D-027).
+- **Ask Halo commands:** the first set is `next`, `battery`, `dark`, `light`, `focus` and `reply` (D-030); more to add if wanted.

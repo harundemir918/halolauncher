@@ -156,3 +156,14 @@ Android doesn't track whether a notification was read, and the designs show the 
 - Hidden from Stream: Halo's own notifications, ongoing ones (music, calls, downloads) and group summaries.
 *Open for the owner:* the snooze length, and whether opening Stream (rather than leaving it) should mark things seen.
 
+## D-030 · Priority, the summary, NOW and Ask Halo commands. **Proposed** (2026-10-28)
+Phase 7 builds on D-028. All rule-based, all from data on the phone (D-012); the rules are in `packages/halo_sdk` (`rules.dart`, `ask.dart`).
+- **Priority:** starred people, then people, then apps. A person is what the app names as one (a chat's people or messaging style, a call, a missed call); starred is the app marking them important or a starred contact (needs the contacts grant, else it is simply not known). With **Focus** on, what isn't a person is *held*: it stays in Stream but never counts as needing the user and is never the top message.
+- **Top message:** among unread messages with a reply action, the highest priority, then the newest. It is the current (Volt) one in Stream.
+- **Summary, "need you":** in order: starred people's replies and calls, an event starting within the hour ("Design review in 19 min"), other people's replies, missed calls ("Call back Anne"), then app messages.
+- **NOW on Home:** the next event today, else the top message ("Elif wrote you", Reply and Later), else "Clear for the day". When NOW shows the message, the card above the arc is hidden so it isn't shown twice.
+- **Ask Halo commands**, typed in the search field and shown as a row under ASK HALO above the other results (Enter runs it): `next` (the next event), `battery` (the charge; the row opens Android's battery settings), `dark` and `light` (the appearance), `focus`, `focus on`, `focus off`, and `reply <name> <text>` (sends through the app's reply action; the name is a sender's full or first name). A one-word command matches from its third letter. Anything else is an ordinary search.
+- **Not done on purpose:** an event or a missed call as the NOW pick (the roadmap says event, else top message), and learning from the user's behaviour (that would be a model).
+- **Unverified:** the missed-call category (`missed_call`) is set by the stock dialer apps but isn't a public constant; other dialers may not set it, and then a missed call is just an app notification.
+*Open for the owner:* the one-hour window for "event soon", and whether a missed call should be a NOW pick.
+
