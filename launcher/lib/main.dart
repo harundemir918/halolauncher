@@ -19,6 +19,7 @@ import 'lock/lock_screen.dart';
 import 'recents/recents_screen.dart';
 import 'stream/stream_screen.dart';
 import 'switchboard/switchboard_screen.dart';
+import 'text_scale.dart';
 import 'welcome/welcome_screen.dart';
 import 'system/system_screen.dart';
 
@@ -229,7 +230,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
     if (_focusOnHome != null && _screen == 'home') {
       WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnHome = null);
     }
-    final screen = switch (_screen) {
+    final shown = switch (_screen) {
       'lock' => LockScreen(
         backend: widget.backend,
         onUnlock: () => setState(() => _screen = 'home'),
@@ -271,6 +272,12 @@ class _HaloLauncherState extends State<HaloLauncher> {
       'bench' => BenchScreen(backend: widget.backend),
       final app => _Placeholder(title: app, onBack: _goHome),
     };
+    // System's text size and Android's font size, up to what the screen holds.
+    final screen = HaloTextScale(
+      backend: widget.backend,
+      max: haloTextScaleCaps[_screen] ?? 1.15,
+      child: shown,
+    );
     return BackendBuilder(
       backend: widget.backend,
       builder: (context, b) => MaterialApp(

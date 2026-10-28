@@ -30,58 +30,77 @@ class WelcomeScreen extends StatelessWidget {
                 right: 0,
                 child: ShellStatusBar(backend: b),
               ),
+              // The header and the list stack, so larger text moves the list
+              // down; at the design's size it starts at 238.
               Positioned(
                 top: 58,
-                left: HaloSpace.gutter,
-                right: HaloSpace.gutter,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const HaloKicker('Welcome'),
-                    const SizedBox(height: 14),
-                    Text(
-                      b.isDefaultHome
-                          ? 'Halo is\nyour home'
-                          : 'Make Halo\nyour home',
-                      style: HaloType.headlineL.copyWith(color: halo.text),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      HaloType.upper(
-                        'All optional · nothing leaves your phone',
-                      ),
-                      style: HaloType.context.copyWith(color: halo.muted),
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 238,
                 bottom: 108,
                 left: HaloSpace.gutter,
                 right: HaloSpace.gutter,
-                child: ListView(
-                  padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    HaloToggleRow(
-                      key: const ValueKey('welcome-home'),
-                      title: 'Home app',
-                      subtitle: b.isDefaultHome
-                          ? 'Halo is your home screen'
-                          : 'Halo as your home screen · allow',
-                      value: b.isDefaultHome,
-                      onChanged: (_) => b.requestDefaultHome(),
-                    ),
-                    for (final g in b.accessGrants) ...[
-                      const SizedBox(height: HaloSpace.g6),
-                      HaloToggleRow(
-                        key: ValueKey('welcome-${g.id}'),
-                        title: g.title,
-                        subtitle: g.granted ? g.detail : '${g.detail} · allow',
-                        value: g.granted,
-                        onChanged: (_) => b.openAccess(g.id),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 180),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const HaloKicker('Welcome'),
+                              const SizedBox(height: 14),
+                              Text(
+                                b.isDefaultHome
+                                    ? 'Halo is\nyour home'
+                                    : 'Make Halo\nyour home',
+                                style: HaloType.headlineL.copyWith(
+                                  color: halo.text,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                HaloType.upper(
+                                  'All optional · nothing leaves your phone',
+                                ),
+                                style: HaloType.context.copyWith(
+                                  color: halo.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ],
+                    ),
+                    Expanded(
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        children: [
+                          HaloToggleRow(
+                            key: const ValueKey('welcome-home'),
+                            title: 'Home app',
+                            subtitle: b.isDefaultHome
+                                ? 'Halo is your home screen'
+                                : 'Halo as your home screen · allow',
+                            value: b.isDefaultHome,
+                            onChanged: (_) => b.requestDefaultHome(),
+                          ),
+                          for (final g in b.accessGrants) ...[
+                            const SizedBox(height: HaloSpace.g6),
+                            HaloToggleRow(
+                              key: ValueKey('welcome-${g.id}'),
+                              title: g.title,
+                              subtitle: g.granted
+                                  ? g.detail
+                                  : '${g.detail} · allow',
+                              value: g.granted,
+                              onChanged: (_) => b.openAccess(g.id),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),

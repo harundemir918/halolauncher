@@ -1,3 +1,4 @@
+import 'package:flutter/semantics.dart';
 import 'package:flutter/widgets.dart';
 import 'package:halo_sdk/halo_sdk.dart';
 import 'package:halo_ui/halo_ui.dart';
@@ -49,42 +50,52 @@ class _StreamScreenState extends State<StreamScreen> {
     final b = widget.backend;
     final halo = context.halo;
     final replying = _replying == n.id;
-    final item = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => b.openNotification(n.id),
-      child: HaloTimelineItem(
-        mark: switch (n.mark) {
-          StreamMark.current => HaloMark.current,
-          StreamMark.alert => HaloMark.alert,
-          StreamMark.read => HaloMark.read,
-        },
-        source: n.source ?? n.sender,
-        time: HaloFormat.streamTime(n.receivedAt, now),
-        body: n.body,
-        gapBefore: gapBefore,
-        actions: [
-          if (n.canReply) ...[
-            HaloTextAction(
-              'Reply',
-              color: halo.signalText,
-              onPressed: () => setState(() {
-                _replying = replying ? null : n.id;
-                _reply.clear();
-              }),
-            ),
-            HaloTextAction(
-              'Later',
-              onPressed: () => b.snoozeNotification(n.id),
-            ),
+    final item = Semantics(
+      // A swipe isn't possible with a screen reader: dismissing is an action
+      // it can name. Open is the tap.
+      customSemanticsActions: n.canDismiss
+          ? {
+              const CustomSemanticsAction(label: 'Dismiss'): () =>
+                  b.dismissNotification(n.id),
+            }
+          : null,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => b.openNotification(n.id),
+        child: HaloTimelineItem(
+          mark: switch (n.mark) {
+            StreamMark.current => HaloMark.current,
+            StreamMark.alert => HaloMark.alert,
+            StreamMark.read => HaloMark.read,
+          },
+          source: n.source ?? n.sender,
+          time: HaloFormat.streamTime(n.receivedAt, now),
+          body: n.body,
+          gapBefore: gapBefore,
+          actions: [
+            if (n.canReply) ...[
+              HaloTextAction(
+                'Reply',
+                color: halo.signalText,
+                onPressed: () => setState(() {
+                  _replying = replying ? null : n.id;
+                  _reply.clear();
+                }),
+              ),
+              HaloTextAction(
+                'Later',
+                onPressed: () => b.snoozeNotification(n.id),
+              ),
+            ],
+            // The app's own actions (Mark as read, Archive…), at most two so
+            // the item stays calm.
+            for (final a in n.actions.take(2))
+              HaloTextAction(
+                a.label,
+                onPressed: () => b.runNotificationAction(n.id, a.id),
+              ),
           ],
-          // The app's own actions (Mark as read, Archive…), at most two so
-          // the item stays calm.
-          for (final a in n.actions.take(2))
-            HaloTextAction(
-              a.label,
-              onPressed: () => b.runNotificationAction(n.id, a.id),
-            ),
-        ],
+        ),
       ),
     );
     final withReply = Column(
@@ -158,58 +169,79 @@ class _StreamScreenState extends State<StreamScreen> {
                   right: HaloSpace.gutter,
                   child: _AccessAsk(onAllow: b.requestNotificationAccess),
                 )
-              else ...[
+              else
+                // The summary and the timeline stack, so a larger text size
+                // moves the timeline down instead of running under the card;
+                // at the design's size the timeline starts at 338.
                 Positioned(
                   top: 116,
                   left: HaloSpace.gutter,
                   right: HaloSpace.gutter,
-                  child: HaloSummaryCard(
-                    kicker:
-                        'Halo read ${summary.read} '
-                        '${summary.read == 1 ? 'thing' : 'things'} for you',
-                    headline: '${summary.needYou.length} need you.',
-                    items: summary.needYou,
-                  ),
-                ),
-                Positioned(
-                  top: 338,
-                  left: HaloSpace.gutter,
-                  right: HaloSpace.gutter,
                   bottom: EdgeSwipes.defaultEdge,
-                  child: all.isEmpty
-                      ? Text(
-                          HaloType.upper('Nothing here'),
-                          style: HaloType.kicker.copyWith(color: halo.muted),
-                        )
-                      : SingleChildScrollView(
-                          child: HaloTimeline(
-                            children: [
-                              if (inPlay.isNotEmpty) ...[
-                                const HaloTimelineSection('Now'),
-                                for (var i = 0; i < inPlay.length; i++)
-                                  _item(
-                                    inPlay[i],
-                                    now,
-                                    gapBefore: i == 0 ? 4 : 20,
-                                  ),
-                              ],
-                              if (earlier.isNotEmpty) ...[
-                                HaloTimelineSection(
-                                  'Earlier',
-                                  gapBefore: inPlay.isEmpty ? 0 : 24,
-                                ),
-                                for (var i = 0; i < earlier.length; i++)
-                                  _item(
-                                    earlier[i],
-                                    now,
-                                    gapBefore: i == 0 ? 4 : 20,
-                                  ),
-                              ],
-                            ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 222 is the card and the space under it down to the
+                      // design's 338; a taller card (larger text) keeps 24.
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 222),
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            child: HaloSummaryCard(
+                              kicker:
+                                  'Halo read ${summary.read} '
+                                  '${summary.read == 1 ? 'thing' : 'things'} '
+                                  'for you',
+                              headline: '${summary.needYou.length} need you.',
+                              items: summary.needYou,
+                            ),
                           ),
                         ),
+                      ),
+                      Expanded(
+                        child: all.isEmpty
+                            ? Align(
+                                alignment: Alignment.topLeft,
+                                child: Text(
+                                  HaloType.upper('Nothing here'),
+                                  style: HaloType.kicker.copyWith(
+                                    color: halo.muted,
+                                  ),
+                                ),
+                              )
+                            : SingleChildScrollView(
+                                child: HaloTimeline(
+                                  children: [
+                                    if (inPlay.isNotEmpty) ...[
+                                      const HaloTimelineSection('Now'),
+                                      for (var i = 0; i < inPlay.length; i++)
+                                        _item(
+                                          inPlay[i],
+                                          now,
+                                          gapBefore: i == 0 ? 4 : 20,
+                                        ),
+                                    ],
+                                    if (earlier.isNotEmpty) ...[
+                                      HaloTimelineSection(
+                                        'Earlier',
+                                        gapBefore: inPlay.isEmpty ? 0 : 24,
+                                      ),
+                                      for (var i = 0; i < earlier.length; i++)
+                                        _item(
+                                          earlier[i],
+                                          now,
+                                          gapBefore: i == 0 ? 4 : 20,
+                                        ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
             ],
           ),
         );
