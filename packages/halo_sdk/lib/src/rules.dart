@@ -52,6 +52,9 @@ StreamSummary summaryOf(
       needs.add((rank, 'Call back ${n.sender}'));
     } else if (n.canReply) {
       needs.add((rank, 'Reply to ${n.sender}'));
+    } else if (n.fromPerson) {
+      // A person wrote, and the app offers no reply: it can be opened.
+      needs.add((rank, 'Read ${n.sender}'));
     }
   }
   final e = now == null ? null : nextEventIn(agenda, now);
@@ -78,15 +81,19 @@ List<HaloNotification> previewsOf(List<HaloNotification> notifications) {
   return (unread.isNotEmpty ? unread : notifications).take(2).toList();
 }
 
-/// The message Home offers: among unread ones that can be replied to, the
-/// most important, then the newest (the list is newest first).
+/// The message Home offers: among unread messages that can be replied to or
+/// that come from a person (then it is opened, not answered), the most
+/// important, then the newest (the list is newest first). A missed call and
+/// what an app posts without a person behind it and without a reply are not
+/// messages.
 HaloNotification? topMessageOf(
   List<HaloNotification> notifications, {
   bool focus = false,
 }) {
   HaloNotification? best;
   for (final n in notifications) {
-    if (!n.unread || !n.canReply) continue;
+    if (!n.unread || n.kind == NotificationKind.missedCall) continue;
+    if (!n.canReply && !n.fromPerson) continue;
     final p = priorityOf(n, focus: focus);
     if (p == Priority.held) continue;
     if (best == null || p.index < priorityOf(best, focus: focus).index) {

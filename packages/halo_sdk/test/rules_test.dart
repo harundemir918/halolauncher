@@ -184,4 +184,75 @@ void main() {
       isA<NowClear>(),
     );
   });
+
+  group('a message nobody can reply to from here', () {
+    test('a person\'s unread message is the top message, to be opened', () {
+      final list = [
+        n('1', unread: true, sender: 'Elif', fromPerson: true),
+        n('2', unread: true, sender: 'Bot'),
+      ];
+      expect(topMessageOf(list)?.id, '1');
+    });
+
+    test('an app\'s message without a reply or a person is not one', () {
+      expect(topMessageOf([n('1', unread: true)]), isNull);
+    });
+
+    test('a missed call is not a message', () {
+      expect(
+        topMessageOf([
+          n(
+            '1',
+            unread: true,
+            kind: NotificationKind.missedCall,
+            fromPerson: true,
+          ),
+        ]),
+        isNull,
+      );
+    });
+
+    test('it ranks like any other: a starred reply beats it', () {
+      final list = [
+        n('1', unread: true, fromPerson: true),
+        n('2', unread: true, canReply: true, fromPerson: true, starred: true),
+      ];
+      expect(topMessageOf(list)?.id, '2');
+      // Equal rank: the newer (first) one.
+      expect(
+        topMessageOf([
+          n('3', unread: true, fromPerson: true),
+          n('4', unread: true, canReply: true, fromPerson: true),
+        ])?.id,
+        '3',
+      );
+    });
+
+    test('Focus holds back apps, not people', () {
+      expect(
+        topMessageOf([n('1', unread: true, fromPerson: true)], focus: true)?.id,
+        '1',
+      );
+    });
+
+    test('the summary says to read it', () {
+      final s = summaryOf([
+        n('1', unread: true, sender: 'Elif', fromPerson: true),
+        n('2', unread: true, sender: 'Deniz', canReply: true, fromPerson: true),
+        n('3', unread: true, sender: 'Bot'),
+      ]);
+      // Both people, in the order of the list (the same rank).
+      expect(s.needYou, ['Read Elif', 'Reply to Deniz']);
+      expect(s.needYou, isNot(contains('Read Bot')));
+    });
+
+    test('NOW shows it when there is no event', () {
+      final pick = nowPickOf(
+        agenda: const [],
+        notifications: [n('1', unread: true, sender: 'Elif', fromPerson: true)],
+        now: now,
+      );
+      expect((pick as NowMessage).message.id, '1');
+    });
+  });
 }
