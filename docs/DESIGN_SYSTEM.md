@@ -247,3 +247,8 @@ The design system ships as the Dart package `packages/halo_ui`:
 - **Semantics:** a tappable thing has a label. A list item is one labelled node; its extra actions are buttons under it or named custom actions; a swipe or a drag always has a named action as well. Don't `ExcludeSemantics` something a screen reader would need to reach.
 - **Contrast:** text tokens are at least 4.5:1 on `ground` and `surface` in both appearances; `contrast_test.dart` enforces it.
 
+## Media strip behavior (D-037)
+
+- A title wider than the card slides (`HaloMarquee`: rest 1.5 s, out at 36 px/s, rest, back three times faster); otherwise it sits. Reduce motion: no sliding, an ellipsis.
+- The bottom 28 px of the card is the seek bar when the player can seek: the bar grows from 3 to 7 px while dragged, and a seek is sent on release (or on a tap). Above it, a flick skips. Without seek support the bar only shows.
+

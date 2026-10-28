@@ -210,3 +210,10 @@ Built from an audit of every screen in both appearances, with Flutter's accessib
 - **Not done:** a by-hand TalkBack pass on a phone (tested through the semantics tree only); Android's largest font sizes beyond the caps; high-contrast text and bold text settings; reading order beyond Flutter's default.
 *Open for the owner:* the caps. 1.15 on the fixed screens is what their layouts hold without moving anything; more would need those screens to scroll or reflow.
 
+## D-037 · The media card slides long titles and seeks. **Proposed** (2026-10-28)
+Two additions to the Switchboard's media card, which the designs don't show:
+- **Marquee:** a track title wider than the card waits 1.5 s, slides to its end at 36 px a second, waits, slides back three times faster, and goes on; a title that fits sits still, and a new title starts from its beginning. With Android's "Remove animations" it stays still and ends in an ellipsis. The artist line keeps its ellipsis.
+- **Seek:** the bottom 28 px of the card is a seek bar. Drag along it (the bar thickens to 7 px while a finger has it) or tap it; the track moves when the finger lets go (`seekMedia`, a fraction of the track). A flick across the title and artist still skips. A screen reader gets a slider that steps by 5%.
+- **Only where the player allows it (rule 1):** Android's `MediaController.transportControls.seekTo` works when the session has a length and offers seeking (`ACTION_SEEK_TO`); `MediaSession.canSeek` says so. Radios, live streams and players that don't offer it get a bar that only shows (nothing is faked). The new position shows at once and is held for a second while the player catches up, so the bar doesn't jump back.
+*Open for the owner:* whether the artist line should slide too, and whether seeking should show the time while dragging (the design has none).
+

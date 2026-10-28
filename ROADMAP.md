@@ -80,7 +80,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 ## Phase 5: Switchboard and System ☑
 - ☑ Brightness dial: reads the real level and auto mode, sets it with the `WRITE_SETTINGS` grant; without it the dial reads only and its footer (`TAP TO ALLOW`) opens the grant screen. With the grant the footer turns auto brightness on and off
 - ☑ Sound dial: media volume, set directly; the footer shows the ringer mode (`MEDIA · RING`, `VIBRATE`, `SILENT`) read-only
-- ☑ Media strip: play/pause, flick left or right across the card to skip. Artwork ☐ (the design has no place for it)
+- ☑ Media strip: play/pause, flick left or right across the card to skip, a long title slides, and the progress bar seeks by drag or tap when the player allows it (D-037). Artwork ☐ (the design has no place for it)
 - ☑ Battery line and cells from `BatteryManager`; "full by" from `computeChargeTimeRemaining()` while charging (unit tested; the emulator is at 100%, so not seen on screen)
 - ☑ Connection rows (Wi-Fi, Bluetooth, Cellular, Airplane) show the real state and stay in step when it changes; Android doesn't let an app switch them, so the switch opens the matching Settings panel (D-029)
 - ☑ Focus row mapped to Do Not Disturb: on and off with notification policy access, which the row asks for when it is missing
