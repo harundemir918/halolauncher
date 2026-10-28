@@ -125,6 +125,50 @@ void main() {
     expect(HaloFormat.streamTime(DateTime(2026, 10, 20, 18, 5), now), '20.10');
   });
 
+  group('the summary card is full width', () {
+    Future<void> pumpWith(WidgetTester tester, MockBackend b) {
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      return tester.pumpWidget(app(b));
+    }
+
+    void expectFull(WidgetTester tester) {
+      final r = tester.getRect(find.byType(HaloSummaryCard));
+      expect(r.left, closeTo(24, 0.5));
+      expect(r.width, closeTo(342, 0.5));
+    }
+
+    testWidgets('with the design copy', (tester) async {
+      await pumpWith(tester, MockBackend());
+      expectFull(tester);
+    });
+
+    testWidgets('with a single short line it is not shrunk or centered', (
+      tester,
+    ) async {
+      await pumpWith(tester, _NothingNew());
+      expectFull(tester);
+    });
+
+    // Nothing needs the user: no lines at all, so nothing in the card is as
+    // wide as the card, and it would be only as wide as its heading.
+    testWidgets('with nothing that needs you it is still the full width', (
+      tester,
+    ) async {
+      await pumpWith(tester, _Calm());
+      expect(find.text('0 need you.'), findsOneWidget);
+      expectFull(tester);
+    });
+
+    testWidgets('and the timeline still starts under it at 338', (
+      tester,
+    ) async {
+      await pumpWith(tester, _Calm());
+      expect(tester.getTopLeft(find.byType(HaloTimeline)).dy, closeTo(338, 1));
+    });
+  });
+
   testWidgets('without new items there is no chip', (tester) async {
     tester.view.physicalSize = const Size(390 * 2, 844 * 2);
     tester.view.devicePixelRatio = 2;
@@ -146,4 +190,11 @@ class _NothingNew extends MockBackend {
   @override
   StreamSummary get streamSummary =>
       const StreamSummary(newCount: 0, read: 11, needYou: ['One']);
+}
+
+/// Nothing needs the user.
+class _Calm extends MockBackend {
+  @override
+  StreamSummary get streamSummary =>
+      const StreamSummary(newCount: 0, read: 3, needYou: []);
 }

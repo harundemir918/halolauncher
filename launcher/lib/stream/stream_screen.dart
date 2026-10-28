@@ -189,13 +189,18 @@ class _StreamScreenState extends State<StreamScreen> {
                           alignment: Alignment.topCenter,
                           child: Padding(
                             padding: const EdgeInsets.only(bottom: 24),
-                            child: HaloSummaryCard(
-                              kicker:
-                                  'Halo read ${summary.read} '
-                                  '${summary.read == 1 ? 'thing' : 'things'} '
-                                  'for you',
-                              headline: '${summary.needYou.length} need you.',
-                              items: summary.needYou,
+                            // Full width: the Align above lets the card be as
+                            // tall as it is, not as narrow.
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: HaloSummaryCard(
+                                kicker:
+                                    'Halo read ${summary.read} '
+                                    '${summary.read == 1 ? 'thing' : 'things'} '
+                                    'for you',
+                                headline: '${summary.needYou.length} need you.',
+                                items: summary.needYou,
+                              ),
                             ),
                           ),
                         ),
