@@ -182,6 +182,12 @@ Rule 6 and rule 7 rule out a crash reporter SDK that sends data, and the release
 Adding an app to the arc meant the long-press menu's "Add to arc", which always put it at the right end. The arc now has a plus slot at each end (`HaloArc.onAddStart`, `onAddEnd`): rotate to it, tap it, and Apps opens as a picker (`Add app`: only apps not on the arc, search works, Go adds the best match, back adds nothing). The chosen app is added at that end and Home returns with it focused. `pinToArc` takes `atStart`.
 - The design has no such slot. It is drawn in the notch shape (not a circle, since it isn't an app) with the arc's own outline and focus treatment, so it stays inside rule 3. It is Android only: the macOS and golden screens pass no callbacks and look as designed.
 - With no apps on the arc there is a single plus (the end one).
-- Not done: dragging an app to a chosen place in the middle (the menu's Move left and right still do that), and a limit on the arc's length.
+- Not done: dragging an app to a chosen place in the middle (the menu's Move left and right still do that). The arc's length is limited by D-034.
 *Open for the owner:* whether the plus slots should also be reachable from outside the arc's reach (they only show when the arc is rotated near an end).
+
+## D-034 · The arc holds at most 10 apps. **Decided** (2026-10-28)
+The owner asked for the Home arc to hold at most 10 apps: with more, swiping to the one wanted gets slow, and every other app is one swipe up in the Apps list and in search.
+- `maxArcApps` in `halo_sdk` is the limit. `pinToArc` does nothing on a full arc, at either end.
+- A full arc has no plus slots. The long-press menu of an app that isn't on it says `Arc is full` (disabled) instead of `Add to arc`. Removing an app makes room again.
+- An arc that already holds more than 10 (from before this) is left as it is: nothing is removed, it just can't grow until it is below 10.
 
