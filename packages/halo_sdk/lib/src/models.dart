@@ -62,6 +62,9 @@ class CalendarEvent {
 enum StreamMark { current, alert, read }
 
 /// A notification in the Stream timeline.
+/// What kind of thing a notification is, from the app's own category.
+enum NotificationKind { message, missedCall, other }
+
 class HaloNotification {
   const HaloNotification({
     required this.id,
@@ -77,6 +80,9 @@ class HaloNotification {
     this.canDismiss = true,
     this.actions = const [],
     this.actionPrompt,
+    this.kind = NotificationKind.other,
+    this.fromPerson = false,
+    this.starred = false,
   });
 
   final String id;
@@ -105,11 +111,39 @@ class HaloNotification {
   /// Whether it can be swiped away (ongoing ones can't).
   final bool canDismiss;
 
+  /// A message, a missed call or anything else (priority, D-030).
+  final NotificationKind kind;
+
+  /// Whether the app names a person behind it (a chat, a call).
+  final bool fromPerson;
+
+  /// Whether that person is starred in the user's contacts.
+  final bool starred;
+
   /// The app's own actions besides reply (`Mark as read`, `Archive`).
   final List<NotificationAction> actions;
 
   /// Short question Halo offers to answer from Home (`Still on for 7?`).
   final String? actionPrompt;
+
+  HaloNotification copyWith({StreamMark? mark}) => HaloNotification(
+    id: id,
+    app: app,
+    sender: sender,
+    body: body,
+    receivedAt: receivedAt,
+    unread: unread,
+    source: source,
+    mark: mark ?? this.mark,
+    preview: preview,
+    canReply: canReply,
+    canDismiss: canDismiss,
+    actions: actions,
+    actionPrompt: actionPrompt,
+    kind: kind,
+    fromPerson: fromPerson,
+    starred: starred,
+  );
 
   /// Compact age as the designs show it: `2M`, `1H`, `3D`.
   String age(DateTime now) {
@@ -303,6 +337,10 @@ class QuickSettings {
   final String volumeFooter;
   final List<QuickToggle> toggles;
   final MediaSession? media;
+
+  /// Whether Focus (Do Not Disturb) is on. The priority rules hold back what
+  /// isn't a person while it is (D-030).
+  bool get focus => toggles.any((t) => t.id == 'focus' && t.on);
 
   QuickSettings copyWith({
     double? brightness,

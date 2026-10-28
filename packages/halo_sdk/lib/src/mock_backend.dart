@@ -411,6 +411,7 @@ class MockBackend implements HaloBackend {
       unread: true,
       mark: StreamMark.current,
       canReply: true,
+      fromPerson: true,
       actionPrompt: 'Still on for 7?',
     ),
     HaloNotification(
@@ -439,6 +440,7 @@ class MockBackend implements HaloBackend {
       body: 'Sent you 3 files for tomorrow.',
       receivedAt: DateTime(now.year, now.month, now.day - 1, 18, 5),
       unread: false,
+      fromPerson: true,
     ),
   ];
 
