@@ -388,6 +388,10 @@ class HaloAndroidPlugin :
                 result.success(null)
             }
             "media" -> result.success(media())
+            "seek" -> {
+                seek(call.argument<Double>("fraction") ?: 0.0)
+                result.success(null)
+            }
             "setPlaying" -> {
                 setPlaying(call.argument<Boolean>("playing") ?: false)
                 result.success(null)
@@ -969,12 +973,26 @@ class HaloAndroidPlugin :
                 ),
             "progress" to if (duration > 0) (position.toDouble() / duration).coerceIn(0.0, 1.0) else 0.0,
             "playing" to (state?.state == PlaybackState.STATE_PLAYING),
+            // Only a player with a length that offers seeking can be dragged.
+            "canSeek" to (
+                duration > 0 && state != null &&
+                    state.actions and PlaybackState.ACTION_SEEK_TO != 0L
+                ),
         )
     }
 
     private fun skip(next: Boolean) {
         val controls = currentController()?.transportControls ?: return
         if (next) controls.skipToNext() else controls.skipToPrevious()
+    }
+
+    /** Moves the playing track to [fraction] of its length, if the player seeks. */
+    private fun seek(fraction: Double) {
+        val c = currentController() ?: return
+        val duration = c.metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: return
+        val state = c.playbackState ?: return
+        if (duration <= 0 || state.actions and PlaybackState.ACTION_SEEK_TO == 0L) return
+        c.transportControls.seekTo((fraction.coerceIn(0.0, 1.0) * duration).toLong())
     }
 
     private fun setPlaying(playing: Boolean) {

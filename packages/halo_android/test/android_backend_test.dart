@@ -129,6 +129,7 @@ void main() {
         'requestNotificationAccess' ||
         'dismissNotification' ||
         'snoozeNotification' ||
+        'seek' ||
         'setPlaying' ||
         'setBrightness' ||
         'setBrightnessAuto' ||
@@ -631,6 +632,47 @@ void main() {
       b.setPlaying(false);
       expect(b.quick.media?.playing, isFalse);
       expect(calls.last.arguments, {'playing': false});
+    });
+
+    test(
+      'seeking: sent as a fraction, shown at once, held while it settles',
+      () async {
+        playing = {
+          'title': 'Night Drive',
+          'artist': 'Mira Okafor',
+          'progress': 0.4,
+          'playing': true,
+          'canSeek': true,
+        };
+        final b = await AndroidBackend.create();
+        addTearDown(b.dispose);
+        expect(b.quick.media?.canSeek, isTrue);
+        b.seekMedia(0.75);
+        expect(b.quick.media?.progress, 0.75);
+        expect(calls.last.method, 'seek');
+        expect(calls.last.arguments, {'fraction': 0.75});
+        // The player still says 0.4 for a moment: not believed.
+        sink.success({'type': 'media'});
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(b.quick.media?.progress, 0.75);
+      },
+    );
+
+    test('a player that can not seek is not asked to', () async {
+      playing = {
+        'title': 'Radio',
+        'artist': '',
+        'progress': 0.0,
+        'playing': true,
+      };
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      expect(b.quick.media?.canSeek, isFalse);
+      final before = calls.length;
+      b.seekMedia(0.5);
+      expect(calls.length, before);
+      expect(b.quick.media?.progress, 0.0);
     });
 
     test('no session, no strip', () async {

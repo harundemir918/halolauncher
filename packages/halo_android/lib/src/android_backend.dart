@@ -518,15 +518,26 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     );
   }
 
+  /// The position the user just dragged to, and when: the player takes a
+  /// moment to get there, so its next readings aren't believed for a second.
+  double? _seekTo;
+  DateTime _seekAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   Future<void> _loadMedia() async {
     final m = await _methods.invokeMapMethod<String, Object?>('media');
+    final settling =
+        _seekTo != null &&
+        DateTime.now().difference(_seekAt) < const Duration(seconds: 1);
     _media = m == null
         ? null
         : MediaSession(
             title: m['title'] as String? ?? '',
             artist: m['artist'] as String? ?? '',
-            progress: (m['progress'] as num?)?.toDouble() ?? 0,
+            progress: settling
+                ? _seekTo!
+                : (m['progress'] as num?)?.toDouble() ?? 0,
             playing: m['playing'] as bool? ?? false,
+            canSeek: m['canSeek'] as bool? ?? false,
           );
     _syncMediaTick();
   }
@@ -593,6 +604,19 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   @override
   void skipMedia({required bool next}) =>
       unawaited(_methods.invokeMethod<void>('skip', {'next': next}));
+
+  @override
+  void seekMedia(double progress) {
+    final m = _media;
+    if (m == null || !m.canSeek) return;
+    final to = progress.clamp(0.0, 1.0);
+    // Show it at once; the next position reading confirms it.
+    _seekTo = to;
+    _seekAt = DateTime.now();
+    _media = m.copyWith(progress: to);
+    _notify();
+    unawaited(_methods.invokeMethod<void>('seek', {'fraction': to}));
+  }
 
   @override
   void setPlaying(bool playing) {
