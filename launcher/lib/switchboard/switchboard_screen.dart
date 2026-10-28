@@ -125,6 +125,8 @@ class SwitchboardScreen extends StatelessWidget {
                     onPlayPause: () => b.setPlaying(!media.playing),
                     onNext: () => b.skipMedia(next: true),
                     onPrevious: () => b.skipMedia(next: false),
+                    // The bar is a seek bar only when the player seeks.
+                    onSeek: media.canSeek ? b.seekMedia : null,
                   ),
                 ),
               Positioned(

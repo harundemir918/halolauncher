@@ -182,6 +182,65 @@ void main() {
     expect(backend.quick.media!.playing, isFalse);
   });
 
+  group('the media card', () {
+    Rect card(WidgetTester tester) =>
+        tester.getRect(find.byType(HaloMediaStrip));
+
+    /// A point on the progress bar at [fraction] of its length: the card less
+    /// the 64 + 4 play square and 14 px of padding each side.
+    Offset onBar(WidgetTester tester, double fraction) {
+      final r = card(tester);
+      return Offset(
+        r.left + 68 + 14 + (r.width - 68 - 28) * fraction,
+        r.bottom - 12,
+      );
+    }
+
+    testWidgets('dragging the progress bar moves the track', (tester) async {
+      await pumpBoard(tester);
+      expect(backend.quick.media!.progress, closeTo(0.42, 0.001));
+      final g = await tester.startGesture(onBar(tester, 0.42));
+      await g.moveTo(onBar(tester, 0.7));
+      await g.moveTo(onBar(tester, 0.85));
+      await g.up();
+      await tester.pump();
+      expect(backend.quick.media!.progress, closeTo(0.85, 0.03));
+    });
+
+    testWidgets('a tap on the bar jumps there', (tester) async {
+      await pumpBoard(tester);
+      await tester.tapAt(onBar(tester, 0.1));
+      await tester.pump();
+      expect(backend.quick.media!.progress, closeTo(0.1, 0.03));
+    });
+
+    testWidgets('a flick across the title still skips the track', (
+      tester,
+    ) async {
+      await pumpBoard(tester);
+      await tester.flingFrom(
+        Offset(card(tester).right - 40, card(tester).top + 14),
+        const Offset(-200, 0),
+        800,
+      );
+      await tester.pumpAndSettle();
+      // The mock starts the next track from its beginning.
+      expect(backend.quick.media!.progress, 0);
+    });
+
+    testWidgets('a player that can not seek has a bar that only shows', (
+      tester,
+    ) async {
+      final b = _NoSeek();
+      await tester.pumpWidget(app(b));
+      expect(
+        tester.widget<HaloMediaStrip>(find.byType(HaloMediaStrip)).onSeek,
+        isNull,
+      );
+      expect(find.bySemanticsLabel('Track position'), findsNothing);
+    });
+  });
+
   testWidgets('layout follows the design y positions', (tester) async {
     await pumpBoard(tester);
     double top(Finder f) => tester.getTopLeft(f).dy;
@@ -218,4 +277,17 @@ class _ReadOnlyBrightness extends MockBackend {
 
   @override
   void setBrightnessAuto(bool auto) => asked++;
+}
+
+/// A session whose player doesn't seek (a radio, say).
+class _NoSeek extends MockBackend {
+  @override
+  QuickSettings get quick => super.quick.copyWith(
+    media: const MediaSession(
+      title: 'Radio',
+      artist: '',
+      progress: 0.3,
+      playing: true,
+    ),
+  );
 }
