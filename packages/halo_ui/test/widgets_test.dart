@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -442,6 +443,8 @@ void main() {
       ValueChanged<int>? onFocus,
       VoidCallback? onAddStart,
       VoidCallback? onAddEnd,
+      void Function(HaloArcApp, int)? onReorder,
+      ValueChanged<HaloArcApp>? onLongPress,
     }) {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -457,11 +460,229 @@ void main() {
               onLaunch: (_) {},
               onAddStart: onAddStart,
               onAddEnd: onAddEnd,
+              onReorder: onReorder,
+              onLongPress: onLongPress,
             ),
           ),
         ),
       );
     }
+
+    group('reordering', () {
+      Offset at(WidgetTester tester, int i) =>
+          tester.getCenter(find.byKey(ValueKey('arc-app$i')));
+
+      /// Press an app and hold until it is a long press.
+      Future<TestGesture> hold(WidgetTester tester, int i) async {
+        final g = await tester.startGesture(at(tester, i));
+        await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+        return g;
+      }
+
+      testWidgets('held still, the long press comes on release', (
+        tester,
+      ) async {
+        HaloArcApp? held;
+        await pumpArc(
+          tester,
+          apps(5),
+          focused: 2,
+          onReorder: (_, _) {},
+          onLongPress: (a) => held = a,
+        );
+        final g = await hold(tester, 1);
+        expect(held, isNull);
+        await g.up();
+        await tester.pump();
+        expect(held?.id, 'app1');
+      });
+
+      testWidgets('it lifts the moment the hold registers, before moving', (
+        tester,
+      ) async {
+        HaloArcApp? held;
+        var reordered = 0;
+        await pumpArc(
+          tester,
+          apps(5),
+          focused: 2,
+          onReorder: (_, _) => reordered++,
+          onLongPress: (a) => held = a,
+        );
+        final placed = tester.getSize(find.byKey(const ValueKey('arc-app1')));
+        final g = await tester.startGesture(at(tester, 1));
+        // Just short of the long press: still as placed.
+        await tester.pump(
+          kLongPressTimeout - const Duration(milliseconds: 100),
+        );
+        await tester.pumpAndSettle(const Duration(milliseconds: 10));
+        expect(
+          tester.getSize(find.byKey(const ValueKey('arc-app1'))).width,
+          closeTo(placed.width, 1),
+        );
+        // The hold registers: it grows, with the finger still.
+        await tester.pump(const Duration(milliseconds: 150));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSize(find.byKey(const ValueKey('arc-app1'))).width,
+          closeTo(placed.width * HaloArc.liftScale, 1),
+        );
+        expect(held, isNull);
+        // Let go without moving: put down, and its menu, not a reorder.
+        await g.up();
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSize(find.byKey(const ValueKey('arc-app1'))).width,
+          closeTo(placed.width, 1),
+        );
+        expect(held?.id, 'app1');
+        expect(reordered, 0);
+      });
+
+      testWidgets('the dragged app is plainly bigger, then settles back', (
+        tester,
+      ) async {
+        await pumpArc(tester, apps(5), focused: 2, onReorder: (_, _) {});
+        final placed = tester.getSize(find.byKey(const ValueKey('arc-app1')));
+        final g = await hold(tester, 1);
+        await g.moveTo(at(tester, 1) + const Offset(12, 0));
+        await tester.pumpAndSettle();
+        final lifted = tester.getSize(find.byKey(const ValueKey('arc-app1')));
+        expect(lifted.width, closeTo(placed.width * HaloArc.liftScale, 1));
+        // Bigger than even the focused app.
+        expect(lifted.width, greaterThan(HaloArc.focusedSize));
+        await g.up();
+        await tester.pumpAndSettle();
+        expect(
+          tester.getSize(find.byKey(const ValueKey('arc-app1'))).width,
+          closeTo(placed.width, 1),
+        );
+      });
+
+      testWidgets('dragging an app to another place drops it there', (
+        tester,
+      ) async {
+        final dropped = <(String, int)>[];
+        final focused = <int>[];
+        await pumpArc(
+          tester,
+          apps(5),
+          focused: 2,
+          onFocus: focused.add,
+          onReorder: (a, to) => dropped.add((a.id, to)),
+        );
+        final g = await hold(tester, 1);
+        await g.moveTo(at(tester, 3));
+        await tester.pumpAndSettle();
+        await g.up();
+        await tester.pump();
+        expect(dropped, [('app1', 3)]);
+        expect(focused, [3]);
+      });
+
+      testWidgets('the others make room while it is dragged', (tester) async {
+        await pumpArc(tester, apps(5), focused: 2, onReorder: (_, _) {});
+        final firstPlace = at(tester, 1);
+        final g = await hold(tester, 1);
+        await g.moveTo(at(tester, 3));
+        await tester.pumpAndSettle();
+        // App 2 stepped into the place app 1 left.
+        expect(at(tester, 2).dx, closeTo(firstPlace.dx, 1));
+        expect(at(tester, 2).dy, closeTo(firstPlace.dy, 1));
+        await g.up();
+      });
+
+      testWidgets('it stays on the arc however the finger strays', (
+        tester,
+      ) async {
+        await pumpArc(tester, apps(5), focused: 2, onReorder: (_, _) {});
+        final g = await hold(tester, 1);
+        // Far above the arc, at the angle of the third app.
+        await g.moveTo(Offset(at(tester, 3).dx, 120));
+        await tester.pumpAndSettle();
+        // The arc's center is 56 below the bottom of the 390 × 844 frame.
+        final d = (at(tester, 1) - const Offset(195, 900)).distance;
+        expect(d, closeTo(HaloArc.radius, 1));
+        await g.up();
+      });
+
+      testWidgets('dropping it back where it was changes nothing', (
+        tester,
+      ) async {
+        var dropped = 0;
+        await pumpArc(
+          tester,
+          apps(5),
+          focused: 2,
+          onReorder: (_, _) => dropped++,
+        );
+        final home = at(tester, 1);
+        final g = await hold(tester, 1);
+        await g.moveTo(at(tester, 3));
+        await tester.pumpAndSettle();
+        await g.moveTo(home);
+        await tester.pumpAndSettle();
+        await g.up();
+        await tester.pump();
+        expect(dropped, 0);
+      });
+
+      testWidgets('there are no plus slots while dragging', (tester) async {
+        await pumpArc(
+          tester,
+          apps(3),
+          focused: 1,
+          onReorder: (_, _) {},
+          onAddStart: () {},
+          onAddEnd: () {},
+        );
+        expect(find.byKey(const ValueKey('arc-add-end')), findsOneWidget);
+        final g = await hold(tester, 0);
+        await g.moveTo(at(tester, 1));
+        await tester.pump();
+        expect(find.byKey(const ValueKey('arc-add-start')), findsNothing);
+        expect(find.byKey(const ValueKey('arc-add-end')), findsNothing);
+        await g.up();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('arc-add-end')), findsOneWidget);
+      });
+
+      testWidgets('near the edge the arc turns, to carry it to the end', (
+        tester,
+      ) async {
+        final dropped = <(String, int)>[];
+        await pumpArc(
+          tester,
+          apps(10),
+          focused: 4,
+          onReorder: (a, to) => dropped.add((a.id, to)),
+        );
+        final g = await hold(tester, 4);
+        // Low on the right: far around the arc from the top.
+        await g.moveTo(const Offset(373, 835));
+        for (var i = 0; i < 30; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        await g.up();
+        await tester.pumpAndSettle();
+        expect(dropped, [('app4', 9)]);
+      });
+
+      testWidgets('without onReorder a long press opens the menu at once', (
+        tester,
+      ) async {
+        HaloArcApp? held;
+        await pumpArc(
+          tester,
+          apps(5),
+          focused: 2,
+          onLongPress: (a) => held = a,
+        );
+        final g = await hold(tester, 1);
+        expect(held?.id, 'app1');
+        await g.up();
+      });
+    });
 
     testWidgets('no plus slots unless asked for', (tester) async {
       await pumpArc(tester, apps(3), focused: 1);
