@@ -267,21 +267,51 @@ void main() {
     expect(find.text('TODAY'), findsOneWidget);
   });
 
-  testWidgets('the arc: role apps get the design glyph, the rest their mask', (
+  testWidgets('the arc draws every app from its monochrome icon, roles too', (
     tester,
   ) async {
     await pumpLauncher(tester, IconBackend());
+    for (final id in ['messages', 'music']) {
+      final mask = find.descendant(
+        of: find.byKey(ValueKey('arc-$id')),
+        matching: find.byKey(const ValueKey('mono')),
+      );
+      expect(mask, findsOneWidget, reason: id);
+    }
+    // The design's glyph is not drawn for an app that has a mask.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('arc-messages')),
+        matching: find.byType(HaloIcon),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('a role app with no mask falls back to the glyph, not its color '
+      'icon', (tester) async {
+    await pumpLauncher(tester, NoMaskBackend());
     final role = find.descendant(
       of: find.byKey(const ValueKey('arc-messages')),
       matching: find.byType(HaloIcon),
     );
     expect(role, findsOneWidget);
     expect(tester.widget<HaloIcon>(role).icon, HaloIcons.messages);
-    final other = find.descendant(
-      of: find.byKey(const ValueKey('arc-music')),
-      matching: find.byKey(const ValueKey('mono')),
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('arc-messages')),
+        matching: find.byType(Image),
+      ),
+      findsNothing,
     );
-    expect(other, findsOneWidget);
+    // Another app with no mask keeps its color icon.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('arc-music')),
+        matching: find.byType(Image),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Switchboard dials follow a vertical drag inside the launcher', (
@@ -381,6 +411,16 @@ class IconBackend extends PhoneBackend {
         monoIcon: _png,
         glyph: a.id == 'messages' ? 'messages' : null,
       ),
+  ];
+}
+
+/// Icons, but none has a monochrome one: a role app has its glyph to fall
+/// back on, the others only their color icon.
+class NoMaskBackend extends IconBackend {
+  @override
+  List<HaloAppInfo> get arcApps => [
+    for (final a in super.arcApps)
+      HaloAppInfo(id: a.id, label: a.label, icon: a.icon, glyph: a.glyph),
   ];
 }
 
