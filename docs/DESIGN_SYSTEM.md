@@ -252,3 +252,7 @@ The design system ships as the Dart package `packages/halo_ui`:
 - A title wider than the card goes round (`HaloMarquee`: rest 1.5 s with its beginning in view, then left at a steady 36 px/s and back in from the right after a 48 px gap, again and again, never reversing); otherwise it sits. Reduce motion: no sliding, an ellipsis.
 - The bottom 28 px of the card is the seek bar when the player can seek: the bar grows from 3 to 7 px while dragged, and a seek is sent on release (or on a tap). Above it, a flick skips. Without seek support the bar only shows.
 
+## App icons on the arc (D-025)
+
+Every app on the Home arc is drawn from its monochrome icon: bone on a `surface` circle, and the focused app a Volt circle with the icon in carbon. The design's glyphs (`HaloIcons`) are what the mock and the goldens draw, and the fallback for an app that fills a design role (camera, messages, phone, browser, maps, music) and has no mask; an app that fills no role falls back to its color icon. The Apps list keeps color icons.
+

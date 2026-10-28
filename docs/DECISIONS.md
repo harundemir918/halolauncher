@@ -115,9 +115,9 @@ The launcher draws edge to edge behind transparent system bars, and lays out the
 
 ## D-025 · App icons on the arc: like `home.png`. **Decided** (2026-10-26)
 The owner chose the design's look for every app on the arc, not only the focused one: a bone glyph on a `surface` circle, and the focused app a Volt circle with the glyph in carbon. No color icons on the arc.
-- **The user's default apps for the design's roles** (maps, music, messages, camera, browser, phone) are drawn with the design's own glyphs, exactly as `home.png`.
+- **The user's default apps for the design's roles** (maps, music, messages, camera, browser, phone) were drawn with the design's own glyphs, exactly as `home.png`. *Changed 2026-10-28 (owner):* they looked out of place next to the masks, so on Android they are drawn from their own monochrome icon like every other app. The design's glyph is used only when no mask can be made for one of them (never its color icon); the mock, macOS and the goldens keep the glyphs, since there are no real icons there.
 - **Every other app** is drawn from a monochrome mask, padded to a glyph's share of the circle: the icon's own monochrome layer (Android 13+ themed icons) when it has one, else a mask derived from the icon (the parts of an adaptive icon that differ from its background layer; for a legacy icon, what differs from its edge color).
-- The color icon is used only if no mask can be made. The Apps list keeps color icons, to help find an app.
+- The color icon is used only if no mask can be made (for an app that fills no role). The Apps list keeps color icons, to help find an app.
 *History:* first proposed as color icons with a Volt ring on the focused app, then monochrome only when focused; the owner asked for `home.png`.
 
 ## D-026 · Apps: a list, the arc you keep, and a long-press menu. **Proposed** (2026-10-26)
