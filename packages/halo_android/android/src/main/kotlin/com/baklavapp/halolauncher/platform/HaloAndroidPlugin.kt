@@ -186,7 +186,10 @@ class HaloAndroidPlugin :
     ): Boolean {
         when (requestCode) {
             REQUEST_CONTACTS -> emit("contacts")
-            REQUEST_CALENDAR -> emit("calendar")
+            REQUEST_CALENDAR -> {
+                watchCalendar()
+                emit("calendar")
+            }
             else -> return false
         }
         return true
@@ -212,7 +215,7 @@ class HaloAndroidPlugin :
         } else {
             context.registerReceiver(profileReceiver, profiles)
         }
-        context.contentResolver.registerContentObserver(CalendarContract.CONTENT_URI, true, calendarObserver)
+        watchCalendar()
         HaloNotificationService.onChange = {
             main.post {
                 emit("notifications")
@@ -231,6 +234,16 @@ class HaloAndroidPlugin :
         HaloNotificationService.onChange = null
         unwatchMedia()
         sink = null
+    }
+
+    // Registering for calendar changes needs READ_CALENDAR; without it the
+    // rest of the stream must still work, and the grant result retries.
+    private fun watchCalendar() {
+        try {
+            context.contentResolver.unregisterContentObserver(calendarObserver)
+            context.contentResolver.registerContentObserver(CalendarContract.CONTENT_URI, true, calendarObserver)
+        } catch (_: SecurityException) {
+        }
     }
 
     private fun emit(type: String) {
