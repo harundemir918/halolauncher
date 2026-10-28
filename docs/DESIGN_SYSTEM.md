@@ -238,3 +238,12 @@ The design system ships as the Dart package `packages/halo_ui`:
 - Widgets: `HaloSwitch`, `HaloToggleRow`, `HaloDial`, `HaloSlat`, `HaloSegmented`, `HaloSlider`, `HaloButton` (optional `leading` and `trailing`, the chevron for "opens another screen"), `HaloCommandField`, `HaloTimeline`, `HaloBatteryLine`, `HaloBatteryCells`, `HaloArc`, `HaloKicker`, `HaloAppRow`, `HaloResultRow`, `HaloLetterIndex`, `HaloMenu`, `NotchBorder` (a `ShapeBorder` for the asymmetric radius).
 - Fonts are bundled as assets in `halo_ui`. Don't use `google_fonts` (there is no network fetching at runtime on the device).
 - Golden tests compare each shell screen with mock data against `design/screens/*.png` at 390 × 844 @2x.
+
+## Accessibility (D-036)
+
+- **Touch targets:** at least 48 × 48 dp. A control drawn smaller keeps its drawn size and gets the 48 dp target around it (`HaloTapTarget`), so nothing moves. Use it for any new small control.
+- **Text size:** `HaloTextScaler`, not `TextScaler.linear`: body text follows System's text size times Android's font size, type from 20 to 36 px grows less, 36 px and up not at all. Each screen has a cap (`haloTextScaleCaps` in `launcher/lib/text_scale.dart`). Lay out a screen so that its header and its content stack rather than sit at fixed y positions, or give it a low cap.
+- **Motion:** wrap any decorative animation duration in `haloMotion(context, d)`; Android's "Remove animations" makes it zero.
+- **Semantics:** a tappable thing has a label. A list item is one labelled node; its extra actions are buttons under it or named custom actions; a swipe or a drag always has a named action as well. Don't `ExcludeSemantics` something a screen reader would need to reach.
+- **Contrast:** text tokens are at least 4.5:1 on `ground` and `surface` in both appearances; `contrast_test.dart` enforces it.
+

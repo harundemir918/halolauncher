@@ -40,7 +40,7 @@ Legend: ☐ to do · ◐ in progress · ☑ done
 - ☑ Navigation and gestures on desktop: hold-to-open, the arc's drag/focus/launch, slat focus and flick-to-close, edge swipes (top right Switchboard, top left Stream, bottom up Home then Recents)
 - ◐ Golden tests at 390 × 844 @2x: every screen has one (`launcher/test/goldens/`), compared with `design/screens/*.png` by eye, not by pixel diff. CI skips them (`--exclude-tags golden`)
 - ☑ Light appearance: palette, every widget and screen reading it, theme picked from System > Appearance (Auto follows the platform), light goldens against `design/screens/*_light.png`
-- ☐ Accessibility pass: semantics labels, text scaling (System > Text size, and Android font scale), reduce motion (Android "remove animations")
+- ◐ Accessibility pass: semantics labels, text scaling (System > Text size, and Android font scale), reduce motion (Android "remove animations"): built and tested against the semantics tree, 48 dp touch targets, real text size with per-screen caps, reduce motion, screen-reader actions for Stream and the arc (D-036); a by-hand TalkBack pass on a phone is still to do
 
 **Exit:** all six screens match the designs in golden tests in both appearances, and the launcher is fully navigable on macOS with mock data.
 
