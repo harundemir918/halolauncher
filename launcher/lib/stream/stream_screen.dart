@@ -194,11 +194,8 @@ class _StreamScreenState extends State<StreamScreen> {
                             child: SizedBox(
                               width: double.infinity,
                               child: HaloSummaryCard(
-                                kicker:
-                                    'Halo read ${summary.read} '
-                                    '${summary.read == 1 ? 'thing' : 'things'} '
-                                    'for you',
-                                headline: '${summary.needYou.length} need you.',
+                                kicker: summaryKicker(summary),
+                                headline: summaryHeadline(summary),
                                 items: summary.needYou,
                               ),
                             ),
@@ -290,3 +287,16 @@ class _AccessAsk extends StatelessWidget {
     );
   }
 }
+
+/// The summary card's top line: what is new, and what was already there.
+/// (The design's "Halo read 11 things for you" implied a reader; Halo has no
+/// AI, it counts.)
+String summaryKicker(StreamSummary s) =>
+    '${s.newCount} new · ${s.read} earlier';
+
+/// The summary card's headline: how many things need the user.
+String summaryHeadline(StreamSummary s) => switch (s.needYou.length) {
+  0 => 'Nothing needs you.',
+  1 => '1 needs you.',
+  final n => '$n need you.',
+};

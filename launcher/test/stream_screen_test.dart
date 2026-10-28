@@ -30,7 +30,7 @@ void main() {
     await pumpStream(tester);
     expect(find.text('Stream'), findsOneWidget);
     expect(find.text('4 NEW'), findsOneWidget);
-    expect(find.text('HALO READ 11 THINGS FOR YOU'), findsOneWidget);
+    expect(find.text('4 NEW · 11 EARLIER'), findsOneWidget);
     expect(find.text('3 need you.'), findsOneWidget);
     expect(find.text('Reply to Elif about dinner'), findsOneWidget);
     expect(find.text('Design review moved to Room 3'), findsOneWidget);
@@ -117,6 +117,36 @@ void main() {
     expect(top(find.text('CALENDAR')), closeTo(468, 5));
   });
 
+  group('the summary card copy', () {
+    const none = StreamSummary(newCount: 0, read: 0, needYou: []);
+
+    test('says what is new and what was already there', () {
+      expect(summaryKicker(none), '0 new · 0 earlier');
+      expect(
+        summaryKicker(const StreamSummary(newCount: 1, read: 0, needYou: [])),
+        '1 new · 0 earlier',
+      );
+      expect(
+        summaryKicker(
+          const StreamSummary(newCount: 4, read: 11, needYou: ['a']),
+        ),
+        '4 new · 11 earlier',
+      );
+    });
+
+    test('and how many things need the user', () {
+      expect(summaryHeadline(none), 'Nothing needs you.');
+      StreamSummary needing(int n) => StreamSummary(
+        newCount: n,
+        read: 0,
+        needYou: [for (var i = 0; i < n; i++) 'x'],
+      );
+      expect(summaryHeadline(needing(1)), '1 needs you.');
+      expect(summaryHeadline(needing(2)), '2 need you.');
+      expect(summaryHeadline(needing(3)), '3 need you.');
+    });
+  });
+
   test('stream time labels', () {
     final now = DateTime(2026, 10, 23, 9, 41);
     expect(HaloFormat.streamTime(DateTime(2026, 10, 23, 9, 39), now), '9:39');
@@ -157,7 +187,7 @@ void main() {
       tester,
     ) async {
       await pumpWith(tester, _Calm());
-      expect(find.text('0 need you.'), findsOneWidget);
+      expect(find.text('Nothing needs you.'), findsOneWidget);
       expectFull(tester);
     });
 
