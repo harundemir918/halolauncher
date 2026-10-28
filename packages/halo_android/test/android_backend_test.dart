@@ -281,6 +281,21 @@ void main() {
       expect(saved(), ['com.a/.Main']);
     });
 
+    test('a full arc takes no more', () async {
+      installed = [
+        for (var i = 0; i < 12; i++) {'id': 'com.x$i/.Main', 'label': 'App $i'},
+      ];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      for (var i = 0; i < 12; i++) {
+        b.pinToArc('com.x$i/.Main', atStart: i.isOdd);
+      }
+      expect(b.arcApps, hasLength(maxArcApps));
+      b.unpinFromArc('com.x0/.Main');
+      b.pinToArc('com.x11/.Main');
+      expect(b.arcApps, hasLength(maxArcApps));
+    });
+
     test('pinning at the start is saved first', () async {
       final b = await AndroidBackend.create();
       addTearDown(b.dispose);

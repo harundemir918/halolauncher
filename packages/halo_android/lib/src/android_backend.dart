@@ -266,6 +266,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
   @override
   void pinToArc(String id, {bool atStart = false}) {
     if (_arc.contains(id) || !_apps.any((a) => a.id == id)) return;
+    if (arcApps.length >= maxArcApps) return;
     atStart ? _arc.insert(0, id) : _arc.add(id);
     _arcChanged();
   }

@@ -84,6 +84,24 @@ void main() {
       expect(b.arcApps.where((a) => a.id == 'web'), hasLength(1));
     });
 
+    test('a full arc takes no more, at either end', () {
+      final b = _ManyApps();
+      for (var i = 0; i < 10; i++) {
+        b.pinToArc('x$i');
+      }
+      // The design's seven were already there.
+      expect(b.arcApps, hasLength(maxArcApps));
+      b.pinToArc('x10');
+      b.pinToArc('x11', atStart: true);
+      expect(b.arcApps, hasLength(maxArcApps));
+      expect(b.arcApps.map((a) => a.id), isNot(contains('x10')));
+      expect(b.arcApps.map((a) => a.id), isNot(contains('x11')));
+      // Room again once one goes.
+      b.unpinFromArc('x0');
+      b.pinToArc('x10');
+      expect(b.arcApps.last.id, 'x10');
+    });
+
     test('pinning an unknown app does nothing', () {
       final b = MockBackend()..pinToArc('nope');
       expect(b.arcApps, hasLength(7));
@@ -436,4 +454,13 @@ void main() {
     expect(at(const Duration(hours: 5)).age(base), '5H');
     expect(at(const Duration(days: 3)).age(base), '3D');
   });
+}
+
+/// The mock with more apps than the arc holds.
+class _ManyApps extends MockBackend {
+  @override
+  List<HaloAppInfo> get apps => [
+    ...super.apps,
+    for (var i = 0; i < 12; i++) HaloAppInfo(id: 'x$i', label: 'App $i'),
+  ];
 }

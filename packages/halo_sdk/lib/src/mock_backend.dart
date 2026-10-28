@@ -319,6 +319,7 @@ class MockBackend implements HaloBackend {
   @override
   void pinToArc(String id, {bool atStart = false}) {
     if (_arc.contains(id) || !apps.any((a) => a.id == id)) return;
+    if (arcApps.length >= maxArcApps) return;
     atStart ? _arc.insert(0, id) : _arc.add(id);
     _changes.add(null);
   }

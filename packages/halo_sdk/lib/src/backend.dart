@@ -1,5 +1,9 @@
 import 'models.dart';
 
+/// How many apps the Home arc holds (D-034). Adding to a full arc does
+/// nothing; an arc that already holds more is left as it is.
+const maxArcApps = 10;
+
 /// What the launcher can ask the platform. [MockBackend] serves the design
 /// fixtures; `AndroidBackend` in `packages/halo_android` serves the phone. The
 /// getters are snapshots, and [changes] says when to read them again.
@@ -69,7 +73,7 @@ abstract interface class HaloBackend {
   List<HaloAppInfo> get arcApps;
 
   /// Adds an app to the right end of the arc, or the left end with [atStart].
-  /// Does nothing if it is there.
+  /// Does nothing if it is there, or if the arc is full ([maxArcApps]).
   void pinToArc(String id, {bool atStart = false});
 
   void unpinFromArc(String id);
