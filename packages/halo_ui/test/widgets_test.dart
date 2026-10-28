@@ -440,6 +440,8 @@ void main() {
       List<HaloArcApp> list, {
       int focused = 0,
       ValueChanged<int>? onFocus,
+      VoidCallback? onAddStart,
+      VoidCallback? onAddEnd,
     }) {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -453,11 +455,81 @@ void main() {
               focusedIndex: focused,
               onFocus: onFocus ?? (_) {},
               onLaunch: (_) {},
+              onAddStart: onAddStart,
+              onAddEnd: onAddEnd,
             ),
           ),
         ),
       );
     }
+
+    testWidgets('no plus slots unless asked for', (tester) async {
+      await pumpArc(tester, apps(3), focused: 1);
+      expect(find.byKey(const ValueKey('arc-add-start')), findsNothing);
+      expect(find.byKey(const ValueKey('arc-add-end')), findsNothing);
+    });
+
+    testWidgets('plus slots sit one step before the first and after the last', (
+      tester,
+    ) async {
+      await pumpArc(
+        tester,
+        apps(3),
+        focused: 1,
+        onAddStart: () {},
+        onAddEnd: () {},
+      );
+      final start = tester.getCenter(
+        find.byKey(const ValueKey('arc-add-start')),
+      );
+      final first = tester.getCenter(find.byKey(const ValueKey('arc-app0')));
+      final last = tester.getCenter(find.byKey(const ValueKey('arc-app2')));
+      final end = tester.getCenter(find.byKey(const ValueKey('arc-add-end')));
+      expect(start.dx, lessThan(first.dx));
+      expect(end.dx, greaterThan(last.dx));
+    });
+
+    testWidgets('tapping a plus slot focuses it, then adds', (tester) async {
+      final focused = <int>[];
+      var added = 0;
+      await pumpArc(
+        tester,
+        apps(3),
+        focused: 2,
+        onFocus: focused.add,
+        onAddEnd: () => added++,
+      );
+      await tester.tap(find.byKey(const ValueKey('arc-add-end')));
+      expect(focused, [3]);
+      expect(added, 0);
+      // Once it is the focused slot a tap adds.
+      await pumpArc(
+        tester,
+        apps(3),
+        focused: 3,
+        onFocus: focused.add,
+        onAddEnd: () => added++,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('arc-add-end')));
+      expect(added, 1);
+      expect(find.text('ADD TO END'), findsOneWidget);
+    });
+
+    testWidgets('the start slot is focused at -1', (tester) async {
+      var added = 0;
+      await pumpArc(tester, apps(3), focused: -1, onAddStart: () => added++);
+      await tester.pumpAndSettle();
+      expect(find.text('ADD TO START'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('arc-add-start')));
+      expect(added, 1);
+    });
+
+    testWidgets('with no apps there is only the end slot', (tester) async {
+      await pumpArc(tester, const [], onAddStart: () {}, onAddEnd: () {});
+      expect(find.byKey(const ValueKey('arc-add-start')), findsNothing);
+      expect(find.byKey(const ValueKey('arc-add-end')), findsOneWidget);
+    });
 
     testWidgets('draws the app icon instead of the glyph when given one', (
       tester,

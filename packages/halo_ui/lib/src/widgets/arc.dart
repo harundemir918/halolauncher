@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../notch_border.dart';
 import '../palette.dart';
 import '../type.dart';
 import 'icons.dart';
@@ -43,6 +44,12 @@ class HaloArcApp {
 /// tapping the focused one launches it. With more than 7 apps the ones past
 /// three steps away are off the arc (see the open question in ROADMAP). The
 /// list may grow or shrink while shown (apps installed or removed).
+///
+/// With [onAddStart] or [onAddEnd] the arc has a plus slot before the first
+/// app or after the last: one more place to rotate to, drawn in the notch
+/// shape since circles are for apps only. [focusedIndex] and [onFocus] then
+/// range from -1 (the start slot) to the app count (the end slot). With no
+/// apps there is only the end slot.
 class HaloArc extends StatefulWidget {
   const HaloArc({
     super.key,
@@ -51,6 +58,8 @@ class HaloArc extends StatefulWidget {
     required this.onFocus,
     required this.onLaunch,
     this.onLongPress,
+    this.onAddStart,
+    this.onAddEnd,
   });
 
   final List<HaloArcApp> apps;
@@ -60,6 +69,10 @@ class HaloArc extends StatefulWidget {
 
   /// A long press on any app on the arc (its menu).
   final ValueChanged<HaloArcApp>? onLongPress;
+
+  /// Tapping the focused plus slot at the start or the end of the arc.
+  final VoidCallback? onAddStart;
+  final VoidCallback? onAddEnd;
 
   static const double radius = 190;
   static const double stepDegrees = 20;
@@ -84,9 +97,15 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
     value: widget.focusedIndex.toDouble(),
   );
 
-  double get _last => math.max(0, widget.apps.length - 1).toDouble();
+  bool get _hasStart => widget.onAddStart != null && widget.apps.isNotEmpty;
+  bool get _hasEnd => widget.onAddEnd != null;
 
-  double _clamp(double v) => v.clamp(0.0, _last);
+  /// The range the arc rotates over: the apps, and the plus slots around them.
+  double get _first => _hasStart ? -1 : 0;
+  double get _last =>
+      math.max(_first, (widget.apps.length - 1 + (_hasEnd ? 1 : 0)).toDouble());
+
+  double _clamp(double v) => v.clamp(_first, _last);
 
   @override
   void didUpdateWidget(HaloArc old) {
@@ -140,7 +159,7 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
                     child: CustomPaint(painter: _ArcPainter(c, halo)),
                   ),
                 ),
-                if (apps.isNotEmpty)
+                if (apps.isNotEmpty || _hasEnd)
                   Positioned(
                     left: 0,
                     right: 0,
@@ -159,15 +178,24 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            HaloType.upper(apps[nearest].label),
+                            HaloType.upper(
+                              nearest < 0
+                                  ? 'Add to start'
+                                  : nearest >= apps.length
+                                  ? 'Add to end'
+                                  : apps[nearest].label,
+                            ),
                             style: HaloType.kicker.copyWith(color: halo.text),
                           ),
                         ],
                       ),
                     ),
                   ),
-                for (var i = 0; i < apps.length; i++)
-                  if ((i - _pos.value).abs() <= 3.5) _app(i, c, halo),
+                for (var i = _first.toInt(); i <= _last.toInt(); i++)
+                  if ((i - _pos.value).abs() <= 3.5)
+                    i >= 0 && i < apps.length
+                        ? _app(i, c, halo)
+                        : _add(i, c, halo),
               ],
             );
             // Drag anywhere in the lower part, including on an app, to rotate.
@@ -195,6 +223,58 @@ class _HaloArcState extends State<HaloArc> with SingleTickerProviderStateMixin {
           },
         );
       },
+    );
+  }
+
+  /// The plus slot before the first app ([i] below 0) or after the last.
+  Widget _add(int i, Offset c, HaloPalette halo) {
+    final start = i < 0;
+    final off = i - _pos.value;
+    final t = off.abs().clamp(0.0, 1.0);
+    final theta = off * HaloArc.stepDegrees * math.pi / 180;
+    final center =
+        c + Offset(math.sin(theta), -math.cos(theta)) * HaloArc.radius;
+    final size = lerpDouble(HaloArc.focusedSize, HaloArc.size, t);
+    final focused = off.abs() < 0.5;
+    final onAdd = start ? widget.onAddStart : widget.onAddEnd;
+    void tap() => focused ? onAdd?.call() : widget.onFocus(i);
+
+    return Positioned(
+      key: ValueKey(start ? 'arc-add-start' : 'arc-add-end'),
+      left: center.dx - size / 2,
+      top: center.dy - size / 2,
+      width: size,
+      height: size,
+      child: Semantics(
+        button: true,
+        label: start ? 'Add an app to the start' : 'Add an app to the end',
+        onTap: tap,
+        child: ExcludeSemantics(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: tap,
+            child: Container(
+              alignment: Alignment.center,
+              decoration: ShapeDecoration(
+                color: halo.surface,
+                shape: NotchBorder(
+                  radius: HaloRadii.notchML,
+                  side: BorderSide(
+                    color: Color.lerp(halo.signalLine, halo.appBorder, t)!,
+                    width: lerpDouble(2, 1, t),
+                  ),
+                ),
+              ),
+              child: HaloIcon(
+                HaloIcons.plus,
+                size: lerpDouble(28, 22, t),
+                strokeWidth: lerpDouble(2, 1.8, t),
+                color: Color.lerp(halo.signalLine, halo.text, t)!,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
