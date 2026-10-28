@@ -123,6 +123,13 @@ abstract interface class HaloBackend {
   /// Asks the platform to make Halo the default home app.
   Future<void> requestDefaultHome();
 
+  /// Whether the first-run welcome (home app and the optional accesses) has
+  /// been shown. Saved on the phone (D-031).
+  bool get welcomed;
+
+  /// Records that the welcome was shown, so it doesn't come back.
+  Future<void> markWelcomed();
+
   /// Emits when the user presses Home while Halo is already showing, or comes
   /// back to it with Home. Broadcast.
   Stream<void> get homePressed;

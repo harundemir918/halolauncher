@@ -9,7 +9,8 @@ import 'settings_pages.dart';
 /// Fixtures that reuse the copy from the designs (design/screens/) so golden
 /// tests line up: Friday 23 October, 09:41, Design review in Room 3, Elif.
 class MockBackend implements HaloBackend {
-  MockBackend({DateTime? now}) : now = now ?? DateTime(2026, 10, 23, 9, 41);
+  MockBackend({DateTime? now, this._welcomed = true})
+    : now = now ?? DateTime(2026, 10, 23, 9, 41);
 
   @override
   final DateTime now;
@@ -237,10 +238,33 @@ class MockBackend implements HaloBackend {
   Future<bool> launch(String id) async => false;
 
   @override
-  bool get isDefaultHome => true;
+  bool get isDefaultHome => _defaultHome;
+
+  var _defaultHome = true;
+
+  /// How often the mock was asked to become the home app, for tests. Asking
+  /// makes it the home app, as the user agreeing would.
+  var defaultHomeRequests = 0;
+
+  set isDefaultHome(bool value) => _defaultHome = value;
+
+  bool _welcomed;
 
   @override
-  Future<void> requestDefaultHome() async {}
+  bool get welcomed => _welcomed;
+
+  @override
+  Future<void> markWelcomed() async {
+    _welcomed = true;
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> requestDefaultHome() async {
+    defaultHomeRequests++;
+    _defaultHome = true;
+    _changes.add(null);
+  }
 
   late final List<HaloAppInfo> _recents = [
     for (final id in const ['messages', 'music', 'maps', 'notes', 'web'])
