@@ -119,8 +119,14 @@ class HaloAndroidPlugin :
         override fun onReceive(context: Context, intent: Intent) = emit("battery")
     }
 
+    // A calendar sync (right after the grant, say) changes many rows at once;
+    // tell Dart once the burst is over, not once per row.
+    private val calendarChanged = Runnable { emit("calendar") }
     private val calendarObserver = object : ContentObserver(main) {
-        override fun onChange(selfChange: Boolean) = emit("calendar")
+        override fun onChange(selfChange: Boolean) {
+            main.removeCallbacks(calendarChanged)
+            main.postDelayed(calendarChanged, 500)
+        }
     }
 
     // A work profile paused or resumed, a private space locked or unlocked.
@@ -231,6 +237,7 @@ class HaloAndroidPlugin :
         switchboard.unregister()
         context.unregisterReceiver(profileReceiver)
         context.contentResolver.unregisterContentObserver(calendarObserver)
+        main.removeCallbacks(calendarChanged)
         HaloNotificationService.onChange = null
         unwatchMedia()
         sink = null
