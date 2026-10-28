@@ -35,6 +35,10 @@ abstract interface class HaloBackend {
   /// Skips to the next track, or the previous one.
   void skipMedia({required bool next});
 
+  /// Moves the playing track to [progress] (0 to 1 of its length). Does
+  /// nothing without a session that can seek (`MediaSession.canSeek`).
+  void seekMedia(double progress);
+
   /// System (settings) state.
   SystemState get system;
 

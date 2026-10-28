@@ -63,6 +63,18 @@ void main() {
     expect(b.apps.every((a) => a.icon == null), isTrue);
   });
 
+  group('media', () {
+    test('seeking moves the track and clamps', () {
+      final b = MockBackend();
+      b.seekMedia(0.8);
+      expect(b.quick.media?.progress, 0.8);
+      b.seekMedia(3);
+      expect(b.quick.media?.progress, 1);
+      b.seekMedia(-1);
+      expect(b.quick.media?.progress, 0);
+    });
+  });
+
   group('arc', () {
     test('pinning adds to the right end once', () async {
       final b = MockBackend();

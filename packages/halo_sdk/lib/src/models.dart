@@ -291,6 +291,7 @@ class MediaSession {
     required this.artist,
     required this.progress,
     required this.playing,
+    this.canSeek = false,
   });
 
   final String title;
@@ -300,11 +301,16 @@ class MediaSession {
   final double progress;
   final bool playing;
 
+  /// Whether the player lets the position be set (it has a length and offers
+  /// seeking). Without it the progress bar only shows.
+  final bool canSeek;
+
   MediaSession copyWith({double? progress, bool? playing}) => MediaSession(
     title: title,
     artist: artist,
     progress: progress ?? this.progress,
     playing: playing ?? this.playing,
+    canSeek: canSeek,
   );
 }
 

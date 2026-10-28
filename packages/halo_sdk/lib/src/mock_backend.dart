@@ -54,6 +54,7 @@ class MockBackend implements HaloBackend {
       artist: 'Mira Okafor',
       progress: 0.42,
       playing: true,
+      canSeek: true,
     ),
   );
 
@@ -190,6 +191,15 @@ class MockBackend implements HaloBackend {
     final m = _quick.media;
     if (m == null) return;
     _update(_quick.copyWith(media: m.copyWith(progress: 0, playing: true)));
+  }
+
+  @override
+  void seekMedia(double progress) {
+    final m = _quick.media;
+    if (m == null || !m.canSeek) return;
+    _update(
+      _quick.copyWith(media: m.copyWith(progress: progress.clamp(0.0, 1.0))),
+    );
   }
 
   @override
