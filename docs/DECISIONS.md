@@ -151,7 +151,7 @@ Android doesn't track whether a notification was read, and the designs show the 
 - **Unread** is what arrived since the user last left Stream (saved on the phone as `streamSeen`). Unread items are in `NOW`, the rest in `EARLIER`.
 - **Marks:** the newest unread message that can be replied to is the current one (Volt); other unread items are alerts (Flare); read items are hollow.
 - **Actions:** a tap sends the notification's own tap action; a sideways swipe clears it from the phone (only clearable ones); REPLY opens a field under the item and sends through the app's reply action; LATER snoozes it for an hour.
-- **Summary:** new = unread; "Halo read N things" = the rest; "need you" = unread messages to reply to ("Reply to Elif").
+- **Summary:** new = unread; earlier = the rest; "need you" = unread messages to reply to ("Reply to Elif"). *Copy changed 2026-10-28 (owner):* the card's top line says `4 NEW · 11 EARLIER` (the design's "Halo read 11 things for you" implied a reader, and Halo has no AI), and its headline says `Nothing needs you.` when the list is empty (`1 needs you.`, `3 need you.` otherwise).
 - **Home's card:** the newest unread message that can be replied to; Reply opens it in Stream with the reply field ready, Later snoozes it. The designs' Yes stays for their fixture question.
 - Hidden from Stream: Halo's own notifications, ongoing ones (music, calls, downloads) and group summaries.
 *Open for the owner:* the snooze length, and whether opening Stream (rather than leaving it) should mark things seen.
