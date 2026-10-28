@@ -281,6 +281,14 @@ void main() {
       expect(saved(), ['com.a/.Main']);
     });
 
+    test('pinning at the start is saved first', () async {
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      b.pinToArc('com.a/.Main', atStart: true);
+      await settle();
+      expect(saved(), ['com.a/.Main', 'com.b/.Main']);
+    });
+
     test('moving steps over apps that are gone', () async {
       prefs['arc'] = jsonEncode([
         'com.a/.Main',
