@@ -93,9 +93,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Apps come and go (installs, removals), so keep the focus on the arc.
     final arc = b.arcApps;
     if (arc.isNotEmpty) _focused ??= _initialFocus();
-    // With plus slots the arc also rotates to one before the first app and
+    // A full arc has none (D-034). With plus slots the arc also rotates to one before the first app and
     // one after the last; with no apps only the end slot is there.
-    final canAdd = widget.onAddToArc != null;
+    final canAdd = widget.onAddToArc != null && arc.length < maxArcApps;
     final focused = arc.isEmpty
         ? 0
         : _focused!.clamp(canAdd ? -1 : 0, arc.length - (canAdd ? 0 : 1));

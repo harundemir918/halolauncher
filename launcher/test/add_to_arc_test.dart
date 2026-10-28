@@ -16,6 +16,24 @@ MockBackend shortArc() {
   return b;
 }
 
+/// More apps than the arc holds, with [onArc] of them on it.
+MockBackend crowded(int onArc) {
+  final b = _Crowded();
+  for (final a in b.apps) {
+    if (b.arcApps.length >= onArc) break;
+    b.pinToArc(a.id);
+  }
+  return b;
+}
+
+class _Crowded extends MockBackend {
+  @override
+  List<HaloAppInfo> get apps => [
+    ...super.apps,
+    for (var i = 0; i < 6; i++) HaloAppInfo(id: 'x$i', label: 'Extra $i'),
+  ];
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -127,5 +145,67 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('arc-add-end')));
     await tester.pumpAndSettle();
     expect(find.byType(AppsScreen), findsOneWidget);
+  });
+
+  group('a full arc (D-034)', () {
+    testWidgets('has no plus slots', (tester) async {
+      final b = crowded(maxArcApps);
+      expect(b.arcApps, hasLength(maxArcApps));
+      await pumpLauncher(tester, b);
+      expect(find.byKey(const ValueKey('arc-add-start')), findsNothing);
+      expect(find.byKey(const ValueKey('arc-add-end')), findsNothing);
+    });
+
+    testWidgets('one short of full still has them', (tester) async {
+      await pumpLauncher(tester, crowded(maxArcApps - 1));
+      // The focus starts mid-arc: rotate to the end to see its slot.
+      await tester.drag(
+        find.byKey(const ValueKey('arc-notes')),
+        const Offset(-400, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('arc-add-end')), findsOneWidget);
+    });
+
+    testWidgets('adding the last one takes the plus slots away', (
+      tester,
+    ) async {
+      final b = crowded(maxArcApps - 1);
+      await pumpLauncher(tester, b);
+      await tester.drag(
+        find.byKey(const ValueKey('arc-notes')),
+        const Offset(-600, 0),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('arc-add-end')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('row-x5')));
+      await tester.pumpAndSettle();
+      expect(b.arcApps, hasLength(maxArcApps));
+      expect(find.byKey(const ValueKey('arc-add-end')), findsNothing);
+    });
+
+    testWidgets('the menu says so instead of offering to add', (tester) async {
+      final b = crowded(maxArcApps);
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(HaloLauncher(backend: b, start: 'apps'));
+      await tester.longPress(find.byKey(const ValueKey('row-x5')));
+      await tester.pumpAndSettle();
+      expect(find.text('Arc is full'), findsOneWidget);
+      expect(find.text('Add to arc'), findsNothing);
+    });
+
+    testWidgets('the menu offers to add while there is room', (tester) async {
+      final b = crowded(maxArcApps - 1);
+      tester.view.physicalSize = const Size(390 * 2, 844 * 2);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(HaloLauncher(backend: b, start: 'apps'));
+      await tester.longPress(find.byKey(const ValueKey('row-x5')));
+      await tester.pumpAndSettle();
+      expect(find.text('Add to arc'), findsOneWidget);
+    });
   });
 }

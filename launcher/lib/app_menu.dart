@@ -74,10 +74,14 @@ class _AppMenuLayerState extends State<AppMenuLayer> {
                     label: 'Arc',
                     items: at < 0
                         ? [
-                            HaloMenuItem(
-                              'Add to arc',
-                              onPressed: _then(() => b.pinToArc(app.id)),
-                            ),
+                            // A full arc takes no more (D-034).
+                            if (arc.length >= maxArcApps)
+                              const HaloMenuItem('Arc is full', onPressed: null)
+                            else
+                              HaloMenuItem(
+                                'Add to arc',
+                                onPressed: _then(() => b.pinToArc(app.id)),
+                              ),
                           ]
                         : [
                             HaloMenuItem(
