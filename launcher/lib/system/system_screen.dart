@@ -8,7 +8,9 @@ import '../format.dart';
 import '../status_bar.dart';
 
 /// System: the Settings app. Numbered sections, one open at a time, controls
-/// inline. Only Display has designed contents so far.
+/// inline. Only Display has designed contents so far. The field above them
+/// finds a section (by its name or what is in it) or one of Android's own
+/// settings pages.
 class SystemScreen extends StatefulWidget {
   const SystemScreen({
     super.key,
@@ -27,8 +29,112 @@ class SystemScreen extends StatefulWidget {
 
 class _SystemScreenState extends State<SystemScreen> {
   late String? _open = widget.initiallyOpen;
+  final _query = TextEditingController();
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
 
   void _toggle(String id) => setState(() => _open = _open == id ? null : id);
+
+  /// What is in each section, so that searching "bluetooth" or "text size"
+  /// finds the one that has it.
+  static const _inside = {
+    'connections': [
+      'Wi-Fi',
+      'Bluetooth',
+      'Mobile data',
+      'Cellular',
+      'Airplane mode',
+      'Network',
+    ],
+    'display': ['Appearance', 'Theme', 'Dark', 'Light', 'Text size', 'Font'],
+    'sound': ['Volume', 'Ringer', 'Vibration', 'Silent'],
+    'focus': ['Do not disturb', 'Quiet', 'Schedule'],
+    'privacy': [
+      'Permissions',
+      'Access',
+      'Notifications access',
+      'Calendar',
+      'Contacts',
+      'Usage access',
+      'Write settings',
+    ],
+    'battery': ['Power saver', 'Charging', 'Usage'],
+  };
+
+  /// The sections that match the query, best first, each once.
+  List<_Section> _found(List<_Section> sections) {
+    final entries = [
+      for (final sec in sections) ...[
+        (sec.title, sec),
+        for (final word in _inside[sec.id] ?? const <String>[]) (word, sec),
+      ],
+    ];
+    final hits = searchByLabel(entries, (e) => e.$1, _query.text);
+    return [
+      for (final id in {for (final h in hits) h.$2.id})
+        sections.firstWhere((sec) => sec.id == id),
+    ];
+  }
+
+  Widget _heading(String label) => SizedBox(
+    height: 36,
+    child: Align(
+      alignment: Alignment.bottomLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: HaloKicker(label, color: context.halo.muted, square: false),
+      ),
+    ),
+  );
+
+  /// The list while there is a query: sections, then Android's own pages.
+  Widget _results(HaloBackend b, List<_Section> sections) {
+    final mine = _found(sections);
+    final pages = searchByLabel(b.settingsPages, (p) => p.label, _query.text);
+    if (mine.isEmpty && pages.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Text(
+          HaloType.upper('No matches'),
+          style: HaloType.kicker.copyWith(color: context.halo.muted),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        if (mine.isNotEmpty) ...[
+          _heading('System'),
+          for (final sec in mine)
+            HaloResultRow(
+              key: ValueKey('system-result-${sec.id}'),
+              title: sec.title,
+              caption: sec.status,
+              onTap: () => _show(sec.id),
+            ),
+        ],
+        if (pages.isNotEmpty) ...[
+          _heading('Android settings'),
+          for (final p in pages)
+            HaloResultRow(
+              key: ValueKey('setting-${p.id}'),
+              title: p.label,
+              onTap: () => b.openSettingsPage(p.id),
+            ),
+        ],
+      ],
+    );
+  }
+
+  /// Open a section from the results: back to the list, with it open.
+  void _show(String id) => setState(() {
+    _query.clear();
+    _open = id;
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -73,41 +179,60 @@ class _SystemScreenState extends State<SystemScreen> {
                         color: context.halo.text,
                       ),
                     ),
-                    HaloAvatar(
-                      initials: sys.account.initials,
-                      label: 'Account: ${sys.account.name}',
-                      onPressed: () {},
-                    ),
+                    // Android doesn't tell a launcher who the user is, so
+                    // there is only an avatar when a backend knows.
+                    if (sys.account.initials.isNotEmpty)
+                      HaloAvatar(
+                        initials: sys.account.initials,
+                        label: 'Account: ${sys.account.name}',
+                        onPressed: () {},
+                      ),
                   ],
                 ),
               ),
-              const Positioned(
+              Positioned(
                 top: 118,
                 left: HaloSpace.gutter,
                 right: HaloSpace.gutter,
-                child: HaloCommandField(),
+                child: HaloCommandField(
+                  controller: _query,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) {
+                    // Go opens the best match.
+                    final mine = _found(sections);
+                    if (mine.isNotEmpty) return _show(mine.first.id);
+                    final pages = searchByLabel(
+                      b.settingsPages,
+                      (p) => p.label,
+                      _query.text,
+                    );
+                    if (pages.isNotEmpty) b.openSettingsPage(pages.first.id);
+                  },
+                ),
               ),
               Positioned(
                 top: 190,
                 left: HaloSpace.gutter,
                 right: HaloSpace.gutter,
                 bottom: EdgeSwipes.defaultEdge,
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < sections.length; i++)
-                        HaloAccordionRow(
-                          number: HaloFormat.two(i + 1),
-                          title: sections[i].title,
-                          status: sections[i].status,
-                          open: _open == sections[i].id,
-                          last: i == sections.length - 1,
-                          onTap: () => _toggle(sections[i].id),
-                          child: _contents(sections[i].id, b),
+                child: _query.text.trim().isNotEmpty
+                    ? _results(b, sections)
+                    : SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            for (var i = 0; i < sections.length; i++)
+                              HaloAccordionRow(
+                                number: HaloFormat.two(i + 1),
+                                title: sections[i].title,
+                                status: sections[i].status,
+                                open: _open == sections[i].id,
+                                last: i == sections.length - 1,
+                                onTap: () => _toggle(sections[i].id),
+                                child: _contents(sections[i].id, b),
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
-                ),
+                      ),
               ),
             ],
           ),
