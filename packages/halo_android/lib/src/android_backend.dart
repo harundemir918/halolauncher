@@ -838,14 +838,25 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
     return package;
   }
 
-  @override
-  List<HaloNotification> get notifications => _shown ??= _build();
+  bool get _focusOn => _quick.focus;
 
-  /// Halo's marks (D-012 rules): unread ones are in play now; the newest
-  /// unread message that can be replied to is the current one (Volt), other
-  /// unread ones are alerts (Flare), the rest read.
-  List<HaloNotification> _build() {
-    var current = false;
+  /// Focus when [_shown] was built: the marks depend on it (D-030).
+  bool _shownFocus = false;
+
+  @override
+  List<HaloNotification> get notifications {
+    final focus = _focusOn;
+    if (_shown == null || _shownFocus != focus) {
+      _shownFocus = focus;
+      _shown = _build(focus);
+    }
+    return _shown!;
+  }
+
+  /// Halo's marks (D-012, D-030): unread ones are in play now; the top
+  /// message (people before apps, starred first, then the newest) is the
+  /// current one (Volt), other unread ones are alerts (Flare), the rest read.
+  List<HaloNotification> _build(bool focus) {
     final list = <HaloNotification>[];
     for (final r in _raw) {
       final title = r['title'] as String;
@@ -853,15 +864,7 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
       final postTime = r['postTime'] as int;
       final unread = postTime > _seenAt;
       final canReply = r['canReply'] as bool? ?? false;
-      final StreamMark mark;
-      if (!unread) {
-        mark = StreamMark.read;
-      } else if (canReply && !current) {
-        current = true;
-        mark = StreamMark.current;
-      } else {
-        mark = StreamMark.alert;
-      }
+      final missedCall = r['missedCall'] as bool? ?? false;
       list.add(
         HaloNotification(
           id: r['id'] as String,
@@ -871,9 +874,15 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
           body: r['text'] as String,
           receivedAt: DateTime.fromMillisecondsSinceEpoch(postTime),
           unread: unread,
-          mark: mark,
           canReply: canReply,
           canDismiss: r['canDismiss'] as bool? ?? true,
+          kind: missedCall
+              ? NotificationKind.missedCall
+              : canReply
+              ? NotificationKind.message
+              : NotificationKind.other,
+          fromPerson: r['fromPerson'] as bool? ?? false,
+          starred: r['starred'] as bool? ?? false,
           actions: [
             for (final a in (r['actions'] as List?) ?? const [])
               NotificationAction(
@@ -884,15 +893,30 @@ class AndroidBackend with WidgetsBindingObserver implements HaloBackend {
         ),
       );
     }
+    final top = topMessageOf(list, focus: focus);
+    final marked = [
+      for (final n in list)
+        n.copyWith(
+          mark: !n.unread
+              ? StreamMark.read
+              : identical(n, top)
+              ? StreamMark.current
+              : StreamMark.alert,
+        ),
+    ];
     // Stream order: in play first, then earlier, newest first within each.
-    return [...list.where((n) => n.unread), ...list.where((n) => !n.unread)];
+    return [
+      ...marked.where((n) => n.unread),
+      ...marked.where((n) => !n.unread),
+    ];
   }
 
   @override
   List<HaloNotification> get lockPreviews => previewsOf(notifications);
 
   @override
-  StreamSummary get streamSummary => summaryOf(notifications);
+  StreamSummary get streamSummary =>
+      summaryOf(notifications, agenda: _agenda, now: now, focus: _focusOn);
 
   @override
   Future<void> openNotification(String id) =>

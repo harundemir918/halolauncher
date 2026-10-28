@@ -462,7 +462,13 @@ void main() {
       String app = 'Messages',
       String package = 'com.a',
       bool canReply = false,
+      bool fromPerson = false,
+      bool starred = false,
+      bool missedCall = false,
     }) => {
+      'fromPerson': fromPerson,
+      'starred': starred,
+      'missedCall': missedCall,
       'id': id,
       'package': package,
       'app': app,
@@ -514,6 +520,36 @@ void main() {
       expect(b.streamSummary.newCount, 2);
       expect(b.streamSummary.needYou, ['Reply to Elif']);
       expect(b.notifications.map((n) => n.id).last, 'old');
+    });
+
+    test('people come before apps: the current mark and the summary', () async {
+      notificationsAllowed = true;
+      posted = [
+        // Newest, but an app.
+        post('bot', at: 400, title: 'Bot', app: 'Bot', canReply: true),
+        post('elif', at: 300, canReply: true, fromPerson: true),
+        post(
+          'mira',
+          at: 200,
+          title: 'Mira',
+          canReply: true,
+          fromPerson: true,
+          starred: true,
+        ),
+        post('anne', at: 100, title: 'Anne', missedCall: true),
+      ];
+      final b = await AndroidBackend.create();
+      addTearDown(b.dispose);
+      final byId = {for (final n in b.notifications) n.id: n};
+      expect(byId['mira']!.mark, StreamMark.current);
+      expect(byId['bot']!.mark, StreamMark.alert);
+      expect(byId['anne']!.kind, NotificationKind.missedCall);
+      expect(b.streamSummary.needYou, [
+        'Reply to Mira',
+        'Reply to Elif',
+        'Call back Anne',
+        'Reply to Bot',
+      ]);
     });
 
     test('leaving Stream marks them seen, and that is saved', () async {

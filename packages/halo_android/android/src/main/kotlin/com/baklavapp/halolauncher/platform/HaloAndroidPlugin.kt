@@ -728,6 +728,7 @@ class HaloAndroidPlugin :
      */
     private fun notifications(): List<Map<String, Any?>> {
         val service = HaloNotificationService.current ?: return emptyList()
+        val starredByUri = HashMap<String, Boolean>()
         val labels = HashMap<String, String>()
         fun label(pkg: String) = labels.getOrPut(pkg) {
             try {
@@ -756,6 +757,13 @@ class HaloAndroidPlugin :
                         ?: extras.getCharSequence(Notification.EXTRA_TEXT)
                     )?.toString()?.trim().orEmpty()
                 if (title.isEmpty() && text.isEmpty()) return@mapNotNull null
+                val people = peopleOf(n)
+                val category = n.category
+                val fromPerson = people.isNotEmpty() ||
+                    category == Notification.CATEGORY_MESSAGE ||
+                    category == Notification.CATEGORY_CALL ||
+                    category == MISSED_CALL ||
+                    extras.getString(Notification.EXTRA_TEMPLATE) == MESSAGING_STYLE
                 mapOf(
                     "id" to sbn.key,
                     "package" to sbn.packageName,
@@ -765,6 +773,11 @@ class HaloAndroidPlugin :
                     "postTime" to sbn.postTime,
                     "canReply" to (replyAction(n) != null),
                     "canDismiss" to sbn.isClearable,
+                    // For the priority rules (D-030): what it is, whether a
+                    // person is behind it, and whether they are starred.
+                    "missedCall" to (category == MISSED_CALL),
+                    "fromPerson" to fromPerson,
+                    "starred" to people.any { it.isImportant || isStarred(it.uri, starredByUri) },
                     // The app's other actions, by their place in the list.
                     "actions" to n.actions.orEmpty().withIndex()
                         .filter { (_, a) -> a.remoteInputs.isNullOrEmpty() && !a.title.isNullOrBlank() }
@@ -772,6 +785,34 @@ class HaloAndroidPlugin :
                 )
             }
             .sortedByDescending { it["postTime"] as Long }
+    }
+
+    /** The people a notification names (chats, calls), if its app says so. */
+    @Suppress("DEPRECATION")
+    private fun peopleOf(n: Notification): List<android.app.Person> =
+        n.extras.getParcelableArrayList<android.app.Person>(Notification.EXTRA_PEOPLE_LIST).orEmpty()
+
+    /** Whether [uri] (a contact or a phone number) is a starred contact. Needs contacts access. */
+    private fun isStarred(uri: String?, cache: MutableMap<String, Boolean>): Boolean {
+        if (uri == null || !canSearchContacts()) return false
+        return cache.getOrPut(uri) {
+            try {
+                val u = Uri.parse(uri)
+                val target = when (u.scheme) {
+                    "tel" -> Uri.withAppendedPath(
+                        ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                        Uri.encode(u.schemeSpecificPart),
+                    )
+                    "content" -> u
+                    else -> return@getOrPut false
+                }
+                context.contentResolver
+                    .query(target, arrayOf(ContactsContract.Contacts.STARRED), null, null, null)
+                    ?.use { it.moveToFirst() && it.getInt(0) == 1 } ?: false
+            } catch (e: Exception) {
+                false
+            }
+        }
     }
 
     /** Sends the notification's tap action and clears it if it should go. */
@@ -1210,6 +1251,11 @@ class HaloAndroidPlugin :
         const val REQUEST_DEFAULT_HOME = 0x4a10
         const val REQUEST_CONTACTS = 0x4a11
         const val REQUEST_CALENDAR = 0x4a12
+
+        // Not public API constants: the category dialer apps set on a missed
+        // call, and the template of a chat notification.
+        const val MISSED_CALL = "missed_call"
+        const val MESSAGING_STYLE = "android.app.Notification\$MessagingStyle"
 
         /** Stream's LATER puts a notification away for an hour. */
         const val SNOOZE_MS = 60 * 60 * 1000L
