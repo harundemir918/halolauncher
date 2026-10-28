@@ -30,3 +30,10 @@ Light appearance (D-013): the same screens with swapped tokens.
 PNGs: `lock_light.png`, `home_light.png`, `recents_light.png`, `switchboard_light.png`, `stream_light.png`, `system_light.png`, `dark_and_light_tokens.png`.
 
 Export names to use for the PNGs: `lock.png`, `home.png`, `recents.png`, `switchboard.png`, `stream.png`, `system.png`, `language.png`.
+
+# Logo
+
+- `logo/halo.svg` : the Halo mark, the source of truth (D-039).
+- `logo/halo-icon-512.png` : the store icon, made by `logo/render.py` (Pillow) from the same numbers. The script also writes macOS's app icon set.
+- Android's icon is vector (`launcher/android/app/src/main/res/drawable/ic_launcher_*.xml`); keep it, the SVG and `render.py` in step.
+

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Halo mark: the hold ring from the Lock screen, bolder. A ring (the
+     halo), a Volt arc from 12 o'clock over 120 degrees (what is active), and a
+     Volt dot at the center. Colors are the palette's: carbon #0C0C0B, bone
+     #F2F0E8, Volt #D6FF3F. 108 x 108 is Android's adaptive icon canvas; the
+     mark stays inside its 66 dp safe circle. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="1024" height="1024">
+  <rect width="108" height="108" fill="#0C0C0B"/>
+  <circle cx="54" cy="54" r="29" fill="none" stroke="#F2F0E8" stroke-opacity="0.30" stroke-width="3.2"/>
+  <path d="M54 25 A29 29 0 0 1 79.115 68.5" fill="none" stroke="#D6FF3F" stroke-width="7.2" stroke-linecap="round"/>
+  <circle cx="54" cy="54" r="8.4" fill="#D6FF3F"/>
+</svg>

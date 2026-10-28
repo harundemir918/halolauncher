@@ -2,4 +2,6 @@
 <resources>
     <!-- Halo ground (halo_ui HaloPalette.light.ground), shown until Flutter's first frame. -->
     <color name="halo_ground">#F3F1E9</color>
+    <!-- The launcher icon's ground: HaloColors.carbon. -->
+    <color name="ic_launcher_background">#0C0C0B</color>
 </resources>

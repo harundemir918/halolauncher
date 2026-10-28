@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same mark in one color, for Android 13's themed icons: the system
+     tints it from the alpha. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,25 A29,29 0 1,1 54,83 A29,29 0 1,1 54,25 Z"
+        android:strokeColor="#000000"
+        android:strokeAlpha="0.40"
+        android:strokeWidth="3.2" />
+    <path
+        android:pathData="M54,25 A29,29 0 0,1 79.115,68.5"
+        android:strokeColor="#000000"
+        android:strokeWidth="7.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M54,45.6 A8.4,8.4 0 1,1 54,62.4 A8.4,8.4 0 1,1 54,45.6 Z" />
+</vector>
