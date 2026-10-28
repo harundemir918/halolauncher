@@ -22,6 +22,7 @@ export 'src/widgets/event_card.dart';
 export 'src/widgets/hold_ring.dart';
 export 'src/widgets/icons.dart';
 export 'src/widgets/kicker.dart';
+export 'src/widgets/marquee.dart';
 export 'src/widgets/media_strip.dart';
 export 'src/widgets/menu.dart';
 export 'src/widgets/notification_preview.dart';
