@@ -217,3 +217,9 @@ Two additions to the Switchboard's media card, which the designs don't show:
 - **Only where the player allows it (rule 1):** Android's `MediaController.transportControls.seekTo` works when the session has a length and offers seeking (`ACTION_SEEK_TO`); `MediaSession.canSeek` says so. Radios, live streams and players that don't offer it get a bar that only shows (nothing is faked). The new position shows at once and is held for a second while the player catches up, so the bar doesn't jump back.
 *Decided 2026-10-28 (owner):* the artist line doesn't slide. *Open for the owner:* whether seeking should show the time while dragging (the design has none).
 
+## D-038 · A long NOW headline, System's search, no avatar without an account. **Proposed** (2026-10-28)
+Three things found on the phone:
+- **NOW headline:** it is two lines, what and when (or who and what). A title too wide for its line shrinks to fit, down to 60% of the 42 px, and past that ends in an ellipsis; the line keeps its full height, so nothing under it moves. The whole title is still in the TODAY row.
+- **System's "find a setting"** was a bare field that did nothing. It now filters System's sections by their name or what is in them (typing "bluetooth" finds Connections, "text size" finds Display), lists Android's own settings pages that match (they open the real page), and Go opens the best match. Choosing a section closes the results and opens it.
+- **No avatar without an account.** Android tells a launcher nothing about who the user is, so the System title's avatar was an empty box. It is drawn only when the backend has initials (the mock does).
+
