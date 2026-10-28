@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_sdk/halo_sdk.dart';
+import 'package:halo_launcher/lock/lock_background.dart';
 import 'package:halo_launcher/lock/lock_screen.dart';
 import 'package:halo_ui/halo_ui.dart';
 
@@ -64,6 +65,24 @@ void main() {
     expect(find.bySemanticsLabel('Flashlight'), findsNothing);
     expect(find.bySemanticsLabel('Camera'), findsOneWidget);
     expect(find.text('HOLD TO OPEN'), findsOneWidget);
+  });
+
+  testWidgets('the Lock screen marks unread on its rings; the glance page '
+      'leaves that to the rows', (tester) async {
+    bool ringDot() =>
+        tester.widget<LockBackground>(find.byType(LockBackground)).hasUnread;
+    useReferenceFrame(tester);
+    // The mock has unread notifications.
+    await tester.pumpWidget(
+      app(LockScreen(backend: MockBackend(), onUnlock: () {})),
+    );
+    expect(ringDot(), isTrue, reason: 'the design marks unread on the rings');
+    await tester.pumpWidget(
+      app(LockScreen(backend: MockBackend(), onUnlock: () {}, glance: true)),
+    );
+    expect(ringDot(), isFalse);
+    // The rows still carry the unread state.
+    expect(find.bySemanticsLabel(RegExp('^Unread')), findsWidgets);
   });
 
   testWidgets('holding the ring for long enough unlocks', (tester) async {

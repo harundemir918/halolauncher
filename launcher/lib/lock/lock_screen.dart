@@ -79,7 +79,12 @@ class _LockScreenState extends State<LockScreen>
       color: context.halo.ground,
       child: Stack(
         children: [
-          Positioned.fill(child: LockBackground(hasUnread: hasUnread)),
+          // The rings' Flare dot is the design's mark for unread on the Lock
+          // screen. The glance page (D-021) has the rows' own dots, and the
+          // ring dot would sit loose on a tall phone, so it leaves it out.
+          Positioned.fill(
+            child: LockBackground(hasUnread: hasUnread && !widget.glance),
+          ),
           Positioned(
             top: 0,
             left: 0,
