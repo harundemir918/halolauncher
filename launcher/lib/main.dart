@@ -19,6 +19,7 @@ import 'lock/lock_screen.dart';
 import 'recents/recents_screen.dart';
 import 'stream/stream_screen.dart';
 import 'switchboard/switchboard_screen.dart';
+import 'welcome/welcome_screen.dart';
 import 'system/system_screen.dart';
 
 /// `mock` or `android`. Defaults to `android` on Android and `mock` elsewhere
@@ -56,7 +57,7 @@ Future<void> main() async {
       start: _start.isNotEmpty
           ? _start
           : backend is AndroidBackend
-          ? 'home'
+          ? (backend.welcomed ? 'home' : 'welcome')
           : 'lock',
       bottomEdgeOpensApps: backend is AndroidBackend,
       glancePage: backend is AndroidBackend,
@@ -226,6 +227,13 @@ class _HaloLauncherState extends State<HaloLauncher> {
         replyTo: _replyTo,
       ),
       'system' => SystemScreen(backend: widget.backend),
+      'welcome' => WelcomeScreen(
+        backend: widget.backend,
+        onDone: () {
+          widget.backend.markWelcomed();
+          setState(() => _screen = 'home');
+        },
+      ),
       'bench' => BenchScreen(backend: widget.backend),
       final app => _Placeholder(title: app, onBack: _goHome),
     };
