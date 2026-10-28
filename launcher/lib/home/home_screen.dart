@@ -15,6 +15,8 @@ class HomeScreen extends StatefulWidget {
     this.onLongPress,
     this.onAsk,
     this.onReply,
+    this.onAddToArc,
+    this.focusAppId,
   });
 
   final HaloBackend backend;
@@ -24,6 +26,13 @@ class HomeScreen extends StatefulWidget {
 
   /// A long press on an app on the arc (its menu).
   final ValueChanged<HaloAppInfo>? onLongPress;
+
+  /// A plus slot at the start (true) or the end (false) of the arc was tapped:
+  /// pick an app to add there. Without it the arc has no plus slots.
+  final ValueChanged<bool>? onAddToArc;
+
+  /// The app the arc starts on, such as the one just added.
+  final String? focusAppId;
 
   /// Ask Halo was tapped: open search (D-027).
   final VoidCallback? onAsk;
@@ -47,6 +56,8 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Start on the app with something unread, else the middle of the arc.
   int _initialFocus() {
     final apps = widget.backend.arcApps;
+    final wanted = apps.indexWhere((a) => a.id == widget.focusAppId);
+    if (wanted >= 0) return wanted;
     final unread = widget.backend.notifications
         .where((n) => n.unread)
         .map((n) => n.app)
@@ -82,7 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
     // Apps come and go (installs, removals), so keep the focus on the arc.
     final arc = b.arcApps;
     if (arc.isNotEmpty) _focused ??= _initialFocus();
-    final focused = arc.isEmpty ? 0 : _focused!.clamp(0, arc.length - 1);
+    // With plus slots the arc also rotates to one before the first app and
+    // one after the last; with no apps only the end slot is there.
+    final canAdd = widget.onAddToArc != null;
+    final focused = arc.isEmpty
+        ? 0
+        : _focused!.clamp(canAdd ? -1 : 0, arc.length - (canAdd ? 0 : 1));
 
     return ColoredBox(
       color: context.halo.ground,
@@ -106,6 +122,8 @@ class _HomeScreenState extends State<HomeScreen> {
               focusedIndex: focused,
               onFocus: (i) => setState(() => _focused = i),
               onLaunch: (app) => widget.onLaunch(app.id),
+              onAddStart: canAdd ? () => widget.onAddToArc!(true) : null,
+              onAddEnd: canAdd ? () => widget.onAddToArc!(false) : null,
               onLongPress: widget.onLongPress == null
                   ? null
                   : (app) => widget.onLongPress!(

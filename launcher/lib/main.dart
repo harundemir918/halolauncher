@@ -112,6 +112,29 @@ class _HaloLauncherState extends State<HaloLauncher> {
   /// Apps was opened from Ask Halo, so its search starts focused.
   bool _ask = false;
 
+  /// Apps is picking an app for the start (true) or the end (false) of the
+  /// arc, from a plus slot on Home. Null for the usual Apps list.
+  bool? _addToArc;
+
+  /// The app Home's arc starts on: the one just added.
+  String? _focusOnHome;
+
+  void _openPicker(bool atStart) => setState(() {
+    _screen = 'apps';
+    _addToArc = atStart;
+    _ask = false;
+    _menu = null;
+  });
+
+  void _pick(String id) {
+    widget.backend.pinToArc(id, atStart: _addToArc ?? false);
+    setState(() {
+      _focusOnHome = id;
+      _addToArc = null;
+      _screen = 'home';
+    });
+  }
+
   /// A notification whose reply field Stream opens with (Home's card).
   String? _replyTo;
 
@@ -138,6 +161,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
         _screen = 'home';
         _menu = null;
         _ask = false;
+        _addToArc = null;
       });
     }
   }
@@ -147,6 +171,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
     _screen = screen;
     _menu = null;
     _ask = false;
+    _addToArc = null;
   });
 
   /// Back closes the menu first, then returns to Home.
@@ -175,6 +200,7 @@ class _HaloLauncherState extends State<HaloLauncher> {
 
   void _onSwipe(EdgeZone zone) => setState(() {
     _ask = false;
+    _addToArc = null;
     _screen = switch (zone) {
       EdgeZone.topRight => 'switchboard',
       EdgeZone.topLeft => 'stream',
@@ -199,6 +225,10 @@ class _HaloLauncherState extends State<HaloLauncher> {
       );
     }
     _shownBefore = _screen;
+    // Home takes the app to start on once, when it is built.
+    if (_focusOnHome != null && _screen == 'home') {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnHome = null);
+    }
     final screen = switch (_screen) {
       'lock' => LockScreen(
         backend: widget.backend,
@@ -212,12 +242,16 @@ class _HaloLauncherState extends State<HaloLauncher> {
         onLongPress: _openMenu,
         onAsk: _openSearch,
         onReply: _replyIn,
+        onAddToArc: _openPicker,
+        focusAppId: _focusOnHome,
       ),
       'apps' => AppsScreen(
         backend: widget.backend,
         onLaunch: _launch,
         onLongPress: _openMenu,
         autofocusSearch: _ask,
+        addToArc: _addToArc,
+        onPick: _pick,
       ),
       'switchboard' => SwitchboardScreen(backend: widget.backend),
       'recents' => RecentsScreen(backend: widget.backend, onLaunch: _launch),

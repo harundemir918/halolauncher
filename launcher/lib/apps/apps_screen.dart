@@ -21,6 +21,8 @@ class AppsScreen extends StatefulWidget {
     required this.onLaunch,
     required this.onLongPress,
     this.autofocusSearch = false,
+    this.addToArc,
+    this.onPick,
   });
 
   final HaloBackend backend;
@@ -29,6 +31,12 @@ class AppsScreen extends StatefulWidget {
   final bool autofocusSearch;
   final ValueChanged<String> onLaunch;
   final ValueChanged<HaloAppInfo> onLongPress;
+
+  /// Picking an app to add to the arc: true for its start, false for its end,
+  /// null for the usual Apps list. Only apps not on the arc are listed, and a
+  /// tap calls [onPick] instead of starting the app.
+  final bool? addToArc;
+  final ValueChanged<String>? onPick;
 
   static const double headingHeight = 36;
 
@@ -245,8 +253,10 @@ class _AppsScreenState extends State<AppsScreen> {
     work: a.work,
     privateSpace: a.privateSpace,
     onArc: onArc.contains(a.id),
-    onTap: () => widget.onLaunch(a.id),
-    onLongPress: () => widget.onLongPress(a),
+    onTap: () => widget.addToArc != null
+        ? widget.onPick?.call(a.id)
+        : widget.onLaunch(a.id),
+    onLongPress: widget.addToArc != null ? null : () => widget.onLongPress(a),
   );
 
   @override
@@ -255,33 +265,51 @@ class _AppsScreenState extends State<AppsScreen> {
       backend: widget.backend,
       builder: (context, b) {
         final halo = context.halo;
-        final apps = b.apps;
         final onArc = {for (final a in b.arcApps) a.id};
+        final pick = widget.addToArc != null;
+        // Picking: only what isn't on the arc yet.
+        final apps = pick
+            ? [
+                for (final a in b.apps)
+                  if (!onArc.contains(a.id)) a,
+              ]
+            : b.apps;
         final query = _query.text;
         final results = searchApps(apps, query);
         _shown = _sections(apps);
 
         final Widget list;
         if (query.trim().isNotEmpty) {
-          final pages = searchByLabel(b.settingsPages, (p) => p.label, query);
+          final pages = pick
+              ? const <SettingsPage>[]
+              : searchByLabel(b.settingsPages, (p) => p.label, query);
           list = ListView(
             padding: const EdgeInsets.only(bottom: 24),
             children: [
-              if (_ask(b, query) case final ask?) ...[
-                _heading('Ask Halo', key: const ValueKey('section-ask')),
-                HaloResultRow(
-                  key: const ValueKey('ask-command'),
-                  title: ask.title,
-                  caption: ask.caption,
-                  captionSignal: ask.run != null,
-                  onTap: ask.run,
-                ),
-              ],
+              if (!pick)
+                if (_ask(b, query) case final ask?) ...[
+                  _heading('Ask Halo', key: const ValueKey('section-ask')),
+                  HaloResultRow(
+                    key: const ValueKey('ask-command'),
+                    title: ask.title,
+                    caption: ask.caption,
+                    captionSignal: ask.run != null,
+                    onTap: ask.run,
+                  ),
+                ],
               if (results.isNotEmpty) ...[
                 _heading('Apps', key: const ValueKey('section-apps')),
                 for (final a in results) _row(a, onArc),
               ],
-              _contactResults(b, query),
+              if (!pick) _contactResults(b, query),
+              if (pick && results.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Text(
+                    HaloType.upper('No matches'),
+                    style: HaloType.kicker.copyWith(color: halo.muted),
+                  ),
+                ),
               if (pages.isNotEmpty) ...[
                 _heading('Settings', key: const ValueKey('section-settings')),
                 for (final p in pages)
@@ -291,7 +319,10 @@ class _AppsScreenState extends State<AppsScreen> {
                     onTap: () => b.openSettingsPage(p.id),
                   ),
               ],
-              if (results.isEmpty && pages.isEmpty && b.canSearchContacts)
+              if (!pick &&
+                  results.isEmpty &&
+                  pages.isEmpty &&
+                  b.canSearchContacts)
                 FutureBuilder<List<ContactResult>>(
                   future: _contactsMatching(query),
                   builder: (context, snap) =>
@@ -317,7 +348,7 @@ class _AppsScreenState extends State<AppsScreen> {
                 _heading(letter, key: ValueKey('heading-$letter')),
                 for (final a in group) _row(a, onArc),
               ],
-              if (b.privateSpace != PrivateSpaceState.none) ...[
+              if (!pick && b.privateSpace != PrivateSpaceState.none) ...[
                 _heading('Private'),
                 HaloResultRow(
                   key: const ValueKey('private-space'),
@@ -353,7 +384,7 @@ class _AppsScreenState extends State<AppsScreen> {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(
-                      'Apps',
+                      pick ? 'Add app' : 'Apps',
                       style: HaloType.screenTitle.copyWith(color: halo.text),
                     ),
                     const SizedBox(width: 12),
@@ -366,18 +397,19 @@ class _AppsScreenState extends State<AppsScreen> {
               ),
               // Android owns the bottom edge swipe (it opens its own Recents),
               // so Halo's Recents has a button here (D-023).
-              if (ShellNav.maybeOf(context) case final nav?)
-                Positioned(
-                  top: 54,
-                  right: HaloSpace.gutter,
-                  child: HaloButton(
-                    label: 'Recents',
-                    size: HaloButtonSize.small,
-                    variant: HaloButtonVariant.secondary,
-                    trailing: HaloIcon(HaloIcons.chevronRight, size: 14),
-                    onPressed: () => nav.open('recents'),
+              if (!pick)
+                if (ShellNav.maybeOf(context) case final nav?)
+                  Positioned(
+                    top: 54,
+                    right: HaloSpace.gutter,
+                    child: HaloButton(
+                      label: 'Recents',
+                      size: HaloButtonSize.small,
+                      variant: HaloButtonVariant.secondary,
+                      trailing: HaloIcon(HaloIcons.chevronRight, size: 14),
+                      onPressed: () => nav.open('recents'),
+                    ),
                   ),
-                ),
               Positioned(
                 top: 120,
                 left: HaloSpace.gutter,
@@ -388,6 +420,11 @@ class _AppsScreenState extends State<AppsScreen> {
                   autofocus: widget.autofocusSearch,
                   onChanged: (_) => setState(() {}),
                   onSubmitted: (text) {
+                    if (pick) {
+                      final best = searchApps(apps, text);
+                      if (best.isNotEmpty) widget.onPick?.call(best.first.id);
+                      return;
+                    }
                     // A command comes first; Enter runs it.
                     if (_ask(widget.backend, text) case final ask?) {
                       if (ask.run != null) return ask.run!();
