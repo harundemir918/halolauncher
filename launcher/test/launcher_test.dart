@@ -257,7 +257,8 @@ void main() {
 
   testWidgets('Home has no TODAY heading without events', (tester) async {
     await pumpLauncher(tester, PhoneBackend(empty: true));
-    expect(find.text('Clear for\nthe day'), findsOneWidget);
+    expect(find.text('Clear for'), findsOneWidget);
+    expect(find.text('the day'), findsOneWidget);
     expect(find.text('TODAY'), findsNothing);
   });
 

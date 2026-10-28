@@ -39,7 +39,9 @@ void main() {
     expect(find.text('SWITCHBOARD'), findsOneWidget);
     expect(find.textContaining('09:41', findRichText: true), findsNothing);
     expect(find.text('NOW'), findsOneWidget);
-    expect(find.text('Design review\nin 19 min'), findsOneWidget);
+    // The headline and the TODAY row both say it.
+    expect(find.text('Design review'), findsNWidgets(2));
+    expect(find.text('in 19 min'), findsOneWidget);
     expect(find.text('ROOM 3 · 2 MIN WALK · 4 PEOPLE'), findsOneWidget);
     expect(find.text('Navigate'), findsOneWidget);
     expect(find.text('Open notes'), findsOneWidget);
@@ -160,7 +162,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Elif\nwrote you'), findsOneWidget);
+    expect(find.text('Elif'), findsOneWidget);
+    expect(find.text('wrote you'), findsOneWidget);
     expect(find.text('Reply'), findsOneWidget);
     expect(find.text('Navigate'), findsNothing);
     // The card below would only repeat it.
@@ -179,7 +182,8 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Clear for\nthe day'), findsOneWidget);
+    expect(find.text('Clear for'), findsOneWidget);
+    expect(find.text('the day'), findsOneWidget);
     expect(find.text('Navigate'), findsNothing);
     expect(find.text('Reply'), findsNothing);
   });
@@ -190,7 +194,8 @@ void main() {
     useReferenceFrame(tester);
     final b = _NoReply(now: DateTime(2026, 10, 23, 23));
     await tester.pumpWidget(app(HomeScreen(backend: b, onLaunch: (_) {})));
-    expect(find.text('Deniz\nwrote you'), findsOneWidget);
+    expect(find.text('Deniz'), findsOneWidget);
+    expect(find.text('wrote you'), findsOneWidget);
     expect(find.text('Open'), findsOneWidget);
     expect(find.text('Reply'), findsNothing);
     await tester.tap(find.text('Open'));
@@ -209,6 +214,72 @@ void main() {
     await tester.tap(find.text('Open'));
     expect(b.openedNotifications, ['sms-9']);
     expect(find.text('Reply'), findsNothing);
+  });
+
+  group('a long title in NOW', () {
+    Future<_LongEvent> pumpLong(WidgetTester tester, String title) async {
+      useReferenceFrame(tester);
+      final b = _LongEvent(title);
+      await tester.pumpWidget(app(HomeScreen(backend: b, onLaunch: (_) {})));
+      return b;
+    }
+
+    double navigateTop(WidgetTester tester) =>
+        tester.getTopLeft(find.text('Navigate')).dy;
+
+    testWidgets('shrinks to fit its line, and nothing moves', (tester) async {
+      await pumpHome(tester);
+      final normal = navigateTop(tester);
+      const title = 'Quarterly planning review';
+      await pumpLong(tester, title);
+      expect(tester.takeException(), isNull, reason: 'no overflow');
+      final line = find.text(title).first;
+      final size = tester.widget<Text>(line).style!.fontSize!;
+      expect(size, lessThan(42));
+      expect(size, greaterThanOrEqualTo(42 * 0.6));
+      expect(tester.getRect(line).right, lessThanOrEqualTo(24 + 342 + 0.5));
+      // It is still two lines: what is under it is where it was.
+      expect(navigateTop(tester), closeTo(normal, 0.5));
+      expect(find.text('in 19 min'), findsOneWidget);
+    });
+
+    testWidgets('one far too long for that ends in an ellipsis', (
+      tester,
+    ) async {
+      await pumpHome(tester);
+      final normal = navigateTop(tester);
+      const title =
+          'Annual general meeting of the neighbourhood cooperative and picnic';
+      await pumpLong(tester, title);
+      expect(tester.takeException(), isNull);
+      final text = tester.widget<Text>(find.text(title).first);
+      expect(text.style!.fontSize, closeTo(42 * 0.6, 0.01));
+      expect(text.overflow, TextOverflow.ellipsis);
+      expect(text.maxLines, 1);
+      expect(navigateTop(tester), closeTo(normal, 0.5));
+      // The whole title is still in the TODAY row.
+      expect(find.text(title), findsNWidgets(2));
+    });
+
+    testWidgets('a short one stays at full size', (tester) async {
+      await pumpLong(tester, 'Dentist');
+      expect(
+        tester.widget<Text>(find.text('Dentist').first).style!.fontSize,
+        42,
+      );
+    });
+
+    testWidgets('a long sender gets the same treatment', (tester) async {
+      useReferenceFrame(tester);
+      final b = _LongSender(now: DateTime(2026, 10, 23, 23));
+      await tester.pumpWidget(app(HomeScreen(backend: b, onLaunch: (_) {})));
+      expect(tester.takeException(), isNull);
+      expect(find.text('wrote you'), findsOneWidget);
+      expect(
+        tester.getRect(find.textContaining('Weapon of Choice').first).right,
+        lessThanOrEqualTo(24 + 342 + 0.5),
+      );
+    });
   });
 
   testWidgets('matches the golden', (tester) async {
@@ -242,6 +313,41 @@ class _NoReply extends MockBackend {
       receivedAt: now.subtract(const Duration(minutes: 3)),
       unread: true,
       mark: StreamMark.current,
+      fromPerson: true,
+    ),
+  ];
+}
+
+/// The next event has the given title.
+class _LongEvent extends MockBackend {
+  _LongEvent(this.title);
+
+  final String title;
+
+  @override
+  List<CalendarEvent> get agenda => [
+    CalendarEvent(
+      start: now.add(const Duration(minutes: 19)),
+      title: title,
+      location: 'Room 3',
+    ),
+  ];
+}
+
+/// A person with a very long name wrote.
+class _LongSender extends MockBackend {
+  _LongSender({super.now});
+
+  @override
+  List<HaloNotification> get notifications => [
+    HaloNotification(
+      id: 'x',
+      app: 'messages',
+      sender: 'Weapon of Choice (feat. Dirty Dike ve King Kenzo) Remix',
+      body: 'hi',
+      receivedAt: now,
+      unread: true,
+      canReply: true,
       fromPerson: true,
     ),
   ];

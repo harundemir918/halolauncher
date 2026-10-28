@@ -284,11 +284,17 @@ class _Now extends StatelessWidget {
       _ => null,
     };
     final minutes = e?.minutesUntil(now);
-    final headline = e != null
-        ? '${e.title}\n${minutes! < 60 ? 'in $minutes min' : 'at ${HaloFormat.clock(e.start)}'}'
+    // The headline is two lines: what, and when (or who, and what).
+    final (top, bottom) = e != null
+        ? (
+            e.title,
+            minutes! < 60
+                ? 'in $minutes min'
+                : 'at ${HaloFormat.clock(e.start)}',
+          )
         : m != null
-        ? '${m.sender}\nwrote you'
-        : 'Clear for\nthe day';
+        ? (m.sender, 'wrote you')
+        : ('Clear for', 'the day');
     final context_ = e != null
         ? [
             e.location,
@@ -302,9 +308,22 @@ class _Now extends StatelessWidget {
       children: [
         const HaloKicker('Now'),
         const SizedBox(height: 14),
-        Text(
-          headline,
-          style: HaloType.headlineL.copyWith(color: context.halo.text),
+        MergeSemantics(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // A long title shrinks to fit its line, and past that ends in an
+              // ellipsis: the headline stays two lines whatever it says.
+              _FitLine(
+                top,
+                style: HaloType.headlineL.copyWith(color: context.halo.text),
+              ),
+              _FitLine(
+                bottom,
+                style: HaloType.headlineL.copyWith(color: context.halo.text),
+              ),
+            ],
+          ),
         ),
         if (context_ != null && context_.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -367,6 +386,49 @@ class _Now extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// One line of headline type that shrinks to fit its width, down to 60%, and
+/// then ends in an ellipsis. It keeps the height of its line at full size, so
+/// whatever is under it doesn't move.
+class _FitLine extends StatelessWidget {
+  const _FitLine(this.text, {required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  static const _smallest = 0.6;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = style.fontSize!;
+    return LayoutBuilder(
+      builder: (context, box) {
+        final line = TextPainter(
+          text: TextSpan(text: text, style: style),
+          textDirection: TextDirection.ltr,
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout();
+        final fit = line.width <= box.maxWidth
+            ? 1.0
+            : (box.maxWidth / line.width).clamp(_smallest, 1.0);
+        return SizedBox(
+          height: size * (style.height ?? 1),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              text,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: style.copyWith(fontSize: size * fit),
+            ),
+          ),
+        );
+      },
     );
   }
 }

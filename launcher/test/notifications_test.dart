@@ -222,7 +222,8 @@ void main() {
     ) async {
       final b = Grants(phoneEvents: true);
       await pumpLauncher(tester, b);
-      expect(find.text('Dentist\nin 30 min'), findsOneWidget);
+      expect(find.text('Dentist'), findsNWidgets(2));
+      expect(find.text('in 30 min'), findsOneWidget);
       await tester.tap(find.text('Open event'));
       expect(b.eventsOpened, ['2']);
       expect(find.text('ALL DAY'), findsOneWidget);
