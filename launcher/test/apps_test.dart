@@ -253,6 +253,61 @@ void main() {
       expect(find.text('NO MATCHES'), findsOneWidget);
     });
 
+    testWidgets('next tells the next event', (tester) async {
+      final b = ManyApps();
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.enterText(find.byType(EditableText), 'next');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('section-ask')), findsOneWidget);
+      expect(find.text(b.nextEvent!.title), findsOneWidget);
+    });
+
+    testWidgets('battery tells the charge', (tester) async {
+      final b = ManyApps();
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.enterText(find.byType(EditableText), 'battery');
+      await tester.pump();
+      expect(find.text('Battery ${b.status.batteryPercent}%'), findsOneWidget);
+    });
+
+    testWidgets('light switches the appearance', (tester) async {
+      final b = ManyApps();
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.enterText(find.byType(EditableText), 'light');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('ask-command')));
+      expect(b.system.appearance, Appearance.light);
+    });
+
+    testWidgets('focus off turns Focus off', (tester) async {
+      final b = ManyApps();
+      expect(b.quick.focus, isTrue);
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.enterText(find.byType(EditableText), 'focus off');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('ask-command')));
+      expect(b.quick.focus, isFalse);
+    });
+
+    testWidgets('reply sends the typed text to the sender', (tester) async {
+      final b = ManyApps();
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.enterText(find.byType(EditableText), 'reply elif on my way');
+      await tester.pump();
+      expect(find.text('Send "on my way" to Elif'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('ask-command')));
+      expect(b.replies, [('elif-1', 'on my way')]);
+    });
+
+    testWidgets('Go runs the command before launching an app', (tester) async {
+      final b = ManyApps();
+      await pumpLauncher(tester, b, start: 'apps');
+      await tester.enterText(find.byType(EditableText), 'light');
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      await tester.pump();
+      expect(b.system.appearance, Appearance.light);
+    });
+
     testWidgets('Go launches the best match', (tester) async {
       await pumpLauncher(tester, ManyApps(), start: 'apps');
       await tester.enterText(find.byType(EditableText), 'mus');

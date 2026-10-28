@@ -64,8 +64,21 @@ class _HomeScreenState extends State<HomeScreen> {
         .where((n) => n.unread)
         .map((n) => n.app)
         .toSet();
-    // The newest unread message that can be replied to (D-012 rules).
-    final ask = topMessageOf(b.notifications);
+    final focus = b.quick.focus;
+    // The next event, else the top message, else clear (D-012, D-030).
+    final pick = event != null
+        ? NowEvent(event)
+        : nowPickOf(
+            agenda: const [],
+            notifications: b.notifications,
+            now: now,
+            focus: focus,
+          );
+    // The top message (people before apps). NOW shows it when there is no
+    // event, so the card below would only repeat it.
+    final ask = pick is NowMessage
+        ? null
+        : topMessageOf(b.notifications, focus: focus);
     // Apps come and go (installs, removals), so keep the focus on the arc.
     final arc = b.arcApps;
     if (arc.isNotEmpty) _focused ??= _initialFocus();
@@ -110,7 +123,12 @@ class _HomeScreenState extends State<HomeScreen> {
             top: 58,
             left: HaloSpace.gutter,
             right: HaloSpace.gutter,
-            child: _Now(event: event, now: now, backend: b),
+            child: _Now(
+              pick: pick,
+              now: now,
+              backend: b,
+              onReply: widget.onReply,
+            ),
           ),
           Positioned(
             top: 290,
@@ -211,26 +229,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
 /// The `NOW` block: kicker, headline, context line and two actions.
 class _Now extends StatelessWidget {
-  const _Now({required this.event, required this.now, required this.backend});
+  const _Now({
+    required this.pick,
+    required this.now,
+    required this.backend,
+    required this.onReply,
+  });
 
-  final CalendarEvent? event;
+  final NowPick pick;
   final DateTime now;
   final HaloBackend backend;
+  final ValueChanged<String>? onReply;
 
   @override
   Widget build(BuildContext context) {
-    final e = event;
+    final e = switch (pick) {
+      NowEvent(:final event) => event,
+      _ => null,
+    };
+    final m = switch (pick) {
+      NowMessage(:final message) => message,
+      _ => null,
+    };
     final minutes = e?.minutesUntil(now);
-    final headline = e == null
-        ? 'Clear for\nthe day'
-        : '${e.title}\n${minutes! < 60 ? 'in $minutes min' : 'at ${HaloFormat.clock(e.start)}'}';
-    final context_ = e == null
-        ? null
-        : [
+    final headline = e != null
+        ? '${e.title}\n${minutes! < 60 ? 'in $minutes min' : 'at ${HaloFormat.clock(e.start)}'}'
+        : m != null
+        ? '${m.sender}\nwrote you'
+        : 'Clear for\nthe day';
+    final context_ = e != null
+        ? [
             e.location,
             if (e.walkMinutes != null) '${e.walkMinutes} min walk',
             if (e.attendees != null) '${e.attendees} people',
-          ].join(' · ');
+          ].join(' · ')
+        : m?.body;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,11 +274,27 @@ class _Now extends StatelessWidget {
           headline,
           style: HaloType.headlineL.copyWith(color: context.halo.text),
         ),
-        if (context_ != null) ...[
+        if (context_ != null && context_.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
             HaloType.upper(context_),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: HaloType.context.copyWith(color: context.halo.muted),
+          ),
+        ],
+        if (m != null) ...[
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              HaloButton(label: 'Reply', onPressed: () => onReply?.call(m.id)),
+              const SizedBox(width: 8),
+              HaloButton(
+                label: 'Later',
+                variant: HaloButtonVariant.secondary,
+                onPressed: () => backend.snoozeNotification(m.id),
+              ),
+            ],
           ),
         ],
         if (e != null) ...[

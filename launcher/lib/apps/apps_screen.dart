@@ -4,6 +4,7 @@ import 'package:halo_ui/halo_ui.dart';
 
 import '../app_icons.dart';
 import '../backend_builder.dart';
+import '../format.dart';
 import '../gestures.dart';
 import '../shell_nav.dart';
 import '../status_bar.dart';
@@ -74,6 +75,65 @@ class _AppsScreenState extends State<AppsScreen> {
       ),
     ),
   );
+
+  /// What a typed command offers as a row (D-030): its title, a caption and
+  /// what tapping it does. Null for an ordinary search.
+  ({String title, String caption, VoidCallback? run})? _ask(
+    HaloBackend b,
+    String query,
+  ) {
+    final command = parseAsk(query, notifications: b.notifications);
+    switch (command) {
+      case null:
+        return null;
+      case AskNext():
+        final e = b.nextEvent;
+        if (e == null) {
+          return (title: 'Nothing more today', caption: 'Next', run: null);
+        }
+        final m = e.minutesUntil(b.now);
+        return (
+          title: e.title,
+          caption: m < 60 ? 'in $m min' : 'at ${HaloFormat.clock(e.start)}',
+          run: switch (e.id) {
+            final id? => () => b.openEvent(id),
+            null => null,
+          },
+        );
+      case AskBattery():
+        final st = b.status;
+        return (
+          title: 'Battery ${st.batteryPercent}%',
+          caption: st.fullBy == null ? 'Battery' : 'Full by ${st.fullBy}',
+          run: () => b.openAndroidSettings('battery'),
+        );
+      case AskAppearance(:final appearance):
+        return (
+          title: 'Switch to ${appearance.name}',
+          caption: 'Theme',
+          run: () => b.setAppearance(appearance),
+        );
+      case AskFocus(:final on):
+        final target = on ?? !b.quick.focus;
+        return (
+          title: 'Turn Focus ${target ? 'on' : 'off'}',
+          caption: 'Focus',
+          run: () => b.setToggle('focus', target),
+        );
+      case AskReply(:final to, :final text):
+        return text.isEmpty
+            ? (title: 'Reply to ${to.sender}', caption: 'Type it', run: null)
+            : (
+                title: 'Send "$text" to ${to.sender}',
+                caption: 'Send',
+                run: () {
+                  b.replyToNotification(to.id, text);
+                  _query.clear();
+                  setState(() {});
+                },
+              );
+    }
+  }
 
   /// The CONTACTS part of the results: an ask while search may not look in
   /// the contacts, else the matches (nothing when there are none).
@@ -207,6 +267,16 @@ class _AppsScreenState extends State<AppsScreen> {
           list = ListView(
             padding: const EdgeInsets.only(bottom: 24),
             children: [
+              if (_ask(b, query) case final ask?) ...[
+                _heading('Ask Halo', key: const ValueKey('section-ask')),
+                HaloResultRow(
+                  key: const ValueKey('ask-command'),
+                  title: ask.title,
+                  caption: ask.caption,
+                  captionSignal: ask.run != null,
+                  onTap: ask.run,
+                ),
+              ],
               if (results.isNotEmpty) ...[
                 _heading('Apps', key: const ValueKey('section-apps')),
                 for (final a in results) _row(a, onArc),
@@ -318,6 +388,10 @@ class _AppsScreenState extends State<AppsScreen> {
                   autofocus: widget.autofocusSearch,
                   onChanged: (_) => setState(() {}),
                   onSubmitted: (text) {
+                    // A command comes first; Enter runs it.
+                    if (_ask(widget.backend, text) case final ask?) {
+                      if (ask.run != null) return ask.run!();
+                    }
                     final best = searchApps(widget.backend.apps, text);
                     if (best.isNotEmpty) return widget.onLaunch(best.first.id);
                     final pages = searchByLabel(

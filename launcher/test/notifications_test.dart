@@ -71,6 +71,7 @@ class Grants extends MockBackend {
         unread: true,
         mark: StreamMark.current,
         canReply: true,
+        fromPerson: true,
         actions: const [
           NotificationAction(id: '1', label: 'Mark as read'),
           NotificationAction(id: '2', label: 'Archive'),

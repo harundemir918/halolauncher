@@ -150,9 +150,7 @@ void main() {
     expect(find.text('CAMERA'), findsOneWidget);
   });
 
-  testWidgets('without a next event Home says so and hides the actions', (
-    tester,
-  ) async {
+  testWidgets('without a next event NOW shows the top message', (tester) async {
     useReferenceFrame(tester);
     await tester.pumpWidget(
       app(
@@ -162,8 +160,28 @@ void main() {
         ),
       ),
     );
+    expect(find.text('Elif\nwrote you'), findsOneWidget);
+    expect(find.text('Reply'), findsOneWidget);
+    expect(find.text('Navigate'), findsNothing);
+    // The card below would only repeat it.
+    expect(find.byType(HaloActionCard), findsNothing);
+  });
+
+  testWidgets('with no event and nothing waiting Home is clear', (
+    tester,
+  ) async {
+    useReferenceFrame(tester);
+    await tester.pumpWidget(
+      app(
+        HomeScreen(
+          backend: _Quiet(now: DateTime(2026, 10, 23, 23)),
+          onLaunch: (_) {},
+        ),
+      ),
+    );
     expect(find.text('Clear for\nthe day'), findsOneWidget);
     expect(find.text('Navigate'), findsNothing);
+    expect(find.text('Reply'), findsNothing);
   });
 
   testWidgets('matches the golden', (tester) async {
@@ -173,4 +191,12 @@ void main() {
       matchesGoldenFile('goldens/home.png'),
     );
   }, tags: 'golden');
+}
+
+/// Nothing posted: no messages to pick from.
+class _Quiet extends MockBackend {
+  _Quiet({super.now});
+
+  @override
+  List<HaloNotification> get notifications => const [];
 }
