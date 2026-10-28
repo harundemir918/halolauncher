@@ -34,29 +34,38 @@ class HaloNotificationPreview extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 13),
-            child: Row(
-              children: [
-                _Dot(unread: unread),
-                const SizedBox(width: 12),
-                Text(
-                  HaloType.upper(sender),
-                  style: HaloType.status.copyWith(color: halo.text),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    body,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: HaloType.preview.copyWith(color: halo.textDim),
+            // A long sender (a track's title, a group's name) is cut short, so
+            // the text and the age are always in view.
+            child: LayoutBuilder(
+              builder: (context, box) => Row(
+                children: [
+                  _Dot(unread: unread),
+                  const SizedBox(width: 12),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: box.maxWidth * 0.4),
+                    child: Text(
+                      HaloType.upper(sender),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: HaloType.status.copyWith(color: halo.text),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  HaloType.upper(age),
-                  style: HaloType.meta.copyWith(color: halo.muted),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      body,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: HaloType.preview.copyWith(color: halo.textDim),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    HaloType.upper(age),
+                    style: HaloType.meta.copyWith(color: halo.muted),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
