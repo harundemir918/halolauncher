@@ -75,6 +75,15 @@ void main() {
       expect(b.arcApps.where((a) => a.id == 'web'), hasLength(1));
     });
 
+    test('pinning at the start puts the app first, once', () {
+      final b = MockBackend();
+      b.unpinFromArc('web');
+      b.pinToArc('web', atStart: true);
+      b.pinToArc('web', atStart: true);
+      expect(b.arcApps.first.id, 'web');
+      expect(b.arcApps.where((a) => a.id == 'web'), hasLength(1));
+    });
+
     test('pinning an unknown app does nothing', () {
       final b = MockBackend()..pinToArc('nope');
       expect(b.arcApps, hasLength(7));

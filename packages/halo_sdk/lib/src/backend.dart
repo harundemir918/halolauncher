@@ -68,8 +68,9 @@ abstract interface class HaloBackend {
   /// The apps the user keeps on the Home arc, left to right.
   List<HaloAppInfo> get arcApps;
 
-  /// Adds an app to the right end of the arc. Does nothing if it is there.
-  void pinToArc(String id);
+  /// Adds an app to the right end of the arc, or the left end with [atStart].
+  /// Does nothing if it is there.
+  void pinToArc(String id, {bool atStart = false});
 
   void unpinFromArc(String id);
 
